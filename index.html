@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6VKbajsCvBAOAXhBe+7x1Zi2KAASW+jbfwl2veSH44A='; style-src 'sha256-z7r2deiWSmF/BFu7zTjCfq7TW+HANl+rq/LHtsrD/vw='; font-src data:; img-src data:; connect-src https://api.weather.gov; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-GM+O555Qs7AavT83vdAdmbKN36FQoKgBkiTB9awEJMw='; style-src 'sha256-KC9TM7HqQPUukWFDJNJDQthgenFgvWZCRFXUXYGyoNE='; font-src data:; img-src data:; connect-src https://api.weather.gov; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -33,6 +33,7 @@
     --bad-bg: #fde8e6;
     --ok-bg: #e3f2ea;
     --focus: #1a73e8;
+    --scrim: rgba(10, 12, 14, 0.45);
 }
 @media (prefers-color-scheme: dark) {
     :root {
@@ -50,6 +51,7 @@
         --bad-bg: #2d1514;
         --ok-bg: #12261c;
         --focus: #8ab4f8;
+        --scrim: rgba(0, 0, 0, 0.6);
     }
 }
 * { box-sizing: border-box; }
@@ -67,12 +69,15 @@ body {
     margin: 0 auto;
     padding: calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 112px);
 }
-header.top { display: flex; align-items: center; justify-content: space-between; padding: 8px 2px 16px; }
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 2px 14px; min-height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 20px; letter-spacing: -0.01em; }
 .brand svg { width: 28px; height: 28px; }
+.title { flex: 1; min-width: 0; }
+.title h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+.title .step { font-size: 12px; color: var(--muted); font-family: 'Plex Mono', ui-monospace, monospace; }
 .icon-btn {
     border: 1px solid var(--line); background: var(--panel); color: var(--ink);
-    border-radius: 10px; min-width: 44px; height: 44px; font: inherit; font-size: 14px; padding: 0 12px;
+    border-radius: 10px; min-width: 44px; height: 44px; font: inherit; font-size: 14px; padding: 0 12px; flex: 0 0 auto;
 }
 .hidden { display: none !important; }
 
@@ -82,7 +87,10 @@ header.top { display: flex; align-items: center; justify-content: space-between;
 .chip { font-size: 12px; color: var(--muted); font-family: 'Plex Mono', ui-monospace, monospace; text-align: right; }
 .chip.ok { color: var(--accent); }
 .chip.bad { color: var(--bad); }
-.link-btn { border: 0; background: none; color: var(--accent); font: inherit; font-size: 14px; font-weight: 600; padding: 6px 0 6px 8px; min-height: 36px; }
+.link-btn { border: 0; background: none; color: var(--accent); font: inherit; font-size: 14px; font-weight: 600; padding: 6px 0 6px 8px; min-height: 40px; }
+.link-btn.left { padding-left: 0; }
+.link-btn:disabled { color: var(--muted); }
+.actions-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
 
 /* instrument readouts */
 .readouts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
@@ -103,28 +111,94 @@ input, select, textarea {
     padding: 11px 12px; min-height: 46px; appearance: none; -webkit-appearance: none;
 }
 textarea { resize: vertical; min-height: 84px; }
-input.mono { font-family: 'Plex Mono', ui-monospace, monospace; }
+input.mono, textarea.mono { font-family: 'Plex Mono', ui-monospace, monospace; }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
-input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--bad); background: var(--bad-bg); }
 .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
 .hint.warn { color: var(--warn); }
-
-.seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.seg { position: relative; }
-.seg input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; min-height: 0; padding: 0; margin: 0; }
-.seg label {
-    display: flex; align-items: center; justify-content: center; min-height: 46px; border-radius: 10px;
-    background: var(--field); font-size: 15px; font-weight: 600; border: 2px solid transparent; text-align: center;
-}
-.seg input:checked + label { border-color: var(--accent); background: var(--ok-bg); }
-.seg input[value="anomaly"]:checked + label { border-color: var(--warn); background: var(--warn-bg); }
-.seg input[value="incident"]:checked + label { border-color: var(--bad); background: var(--bad-bg); }
-.seg input:focus-visible + label { outline: 2px solid var(--focus); }
+.hint.bad { color: var(--bad); }
+details.hint summary { min-height: 40px; display: flex; align-items: center; }
 
 .banner { border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-size: 14px; }
 .banner.warn { background: var(--warn-bg); color: var(--warn); }
 .banner.bad { background: var(--bad-bg); color: var(--bad); }
 .banner.ok { background: var(--ok-bg); color: var(--accent); }
+.banner ul { margin: 6px 0 0; padding-left: 18px; }
+.banner .link-btn { color: inherit; text-decoration: underline; padding: 0 0 0 4px; min-height: 32px; }
+
+/* option lists and chips (large touch targets) */
+.opts { display: grid; gap: 8px; }
+.opt {
+    display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 10px 14px; text-align: left;
+    border-radius: 12px; border: 2px solid transparent; background: var(--field); color: var(--ink); font: inherit; font-size: 16px;
+}
+.actions-row .opt { flex: 1; width: auto; min-width: 0; }
+.opt .dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--muted); flex: 0 0 auto; }
+.opt.multi .dot { border-radius: 5px; }
+.opt[aria-pressed="true"], .opt[aria-checked="true"] { border-color: var(--accent); background: var(--ok-bg); }
+.opt[aria-pressed="true"] .dot, .opt[aria-checked="true"] .dot { background: var(--accent); border-color: var(--accent); }
+.opt.warn[aria-pressed="true"], .opt.warn[aria-checked="true"] { border-color: var(--warn); background: var(--warn-bg); }
+.opt.warn[aria-pressed="true"] .dot, .opt.warn[aria-checked="true"] .dot { background: var(--warn); border-color: var(--warn); }
+.opt.bad[aria-pressed="true"], .opt.bad[aria-checked="true"] { border-color: var(--bad); background: var(--bad-bg); }
+.opt.bad[aria-pressed="true"] .dot, .opt.bad[aria-checked="true"] .dot { background: var(--bad); border-color: var(--bad); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips .opt { width: auto; min-height: 44px; padding: 8px 14px; font-size: 15px; }
+.chips .opt .dot { display: none; }
+.follow { margin: -2px 0 6px 0; }
+
+/* checklist rows */
+.group-h { font-size: 12px; color: var(--muted); margin: 14px 2px 6px; letter-spacing: 0.04em; }
+.group-h:first-child { margin-top: 0; }
+.ck { border-radius: 12px; background: var(--field); margin-bottom: 8px; border: 2px solid transparent; }
+.ck[data-s="pass"] { border-color: var(--accent); background: var(--ok-bg); }
+.ck[data-s="issue"] { border-color: var(--bad); background: var(--bad-bg); }
+.ck[data-s="na"] { border-color: var(--line); }
+.ck-top { display: flex; align-items: stretch; }
+.ck-main {
+    flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px; min-height: 58px;
+    border: 0; background: none; color: var(--ink); font: inherit; font-size: 16px; text-align: left;
+}
+.ck-icon {
+    width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--muted); flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; line-height: 1;
+}
+.ck[data-s="pass"] .ck-icon { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.ck[data-s="issue"] .ck-icon { background: var(--bad); border-color: var(--bad); color: #fff; }
+.ck[data-s="na"] .ck-icon { border-style: dashed; color: var(--muted); }
+.ck-label { min-width: 0; }
+.ck-label small { display: block; font-size: 12px; color: var(--muted); }
+.ck-side { display: flex; align-items: center; gap: 4px; padding-right: 6px; }
+.ck-btn {
+    min-width: 46px; min-height: 40px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel);
+    color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; padding: 0 8px;
+}
+.ck-btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.ck-btn.info { min-width: 40px; border-radius: 50%; font-family: 'Plex Mono', ui-monospace, monospace; }
+.ck-more { padding: 0 12px 12px 52px; }
+.ck-more .hint { margin: 0 0 6px; font-size: 13px; }
+.ck-more input { font-size: 16px; min-height: 42px; background: var(--panel); }
+.progress { height: 6px; border-radius: 3px; background: var(--field); overflow: hidden; margin-top: 6px; }
+.progress > div { height: 100%; background: var(--accent); width: 0; }
+
+/* active flight */
+.timer { font-family: 'Plex Mono', ui-monospace, monospace; font-weight: 500; font-size: 64px; letter-spacing: -0.02em; text-align: center; margin: 10px 0 2px; font-variant-numeric: tabular-nums; }
+.rec { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; color: var(--bad); }
+.rec i { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); display: inline-block; }
+
+/* review */
+dl.review { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; font-size: 15px; }
+dl.review dt { color: var(--muted); }
+dl.review dd { margin: 0; font-family: 'Plex Mono', ui-monospace, monospace; overflow-wrap: anywhere; }
+.tag { display: inline-block; font-family: 'Plex Sans', sans-serif; font-size: 11px; padding: 1px 6px; border-radius: 5px; margin-left: 6px; vertical-align: 1px; background: var(--field); color: var(--muted); white-space: nowrap; }
+.tag.captured { background: var(--ok-bg); color: var(--accent); }
+.tag.estimated, .tag.corrected { background: var(--warn-bg); color: var(--warn); }
+.tag.missing { background: var(--bad-bg); color: var(--bad); margin-left: 0; }
+.ck-list { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+.ck-list li { display: flex; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.ck-list li:last-child { border-bottom: 0; }
+.ck-list .st { flex: 0 0 82px; font-family: 'Plex Mono', ui-monospace, monospace; font-size: 12px; padding-top: 2px; }
+.ck-list .st.pass { color: var(--accent); }
+.ck-list .st.issue { color: var(--bad); }
+.ck-list .st.none { color: var(--warn); }
 
 .dock {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
@@ -134,197 +208,171 @@ input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--ba
 .dock .inner { max-width: 528px; margin: 0 auto; display: flex; gap: 10px; }
 .btn {
     flex: 1; min-height: 54px; border-radius: 14px; border: 0; font: inherit; font-weight: 600; font-size: 17px;
-    background: var(--accent); color: var(--accent-ink);
+    background: var(--accent); color: var(--accent-ink); padding: 0 14px;
 }
 .btn.secondary { background: var(--panel); color: var(--ink); border: 1px solid var(--line); flex: 0 0 auto; padding: 0 18px; }
+.btn.danger { background: var(--bad); color: #fff; }
+.btn.big { min-height: 64px; font-size: 19px; }
 .btn:disabled { opacity: 0.5; }
 
-dl.review { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 15px; }
-dl.review dt { color: var(--muted); }
-dl.review dd { margin: 0; font-family: 'Plex Mono', ui-monospace, monospace; overflow-wrap: anywhere; }
+/* bottom sheet */
+.sheet-back { position: fixed; inset: 0; background: var(--scrim); z-index: 20; display: flex; align-items: flex-end; justify-content: center; }
+.sheet {
+    background: var(--panel); width: 100%; max-width: 560px; border-radius: 18px 18px 0 0;
+    padding: 18px 16px calc(env(safe-area-inset-bottom) + 16px); max-height: 85vh; overflow-y: auto;
+}
+.sheet h3 { margin: 0 0 8px; font-size: 18px; }
+.sheet p, .sheet li { font-size: 15px; }
+.sheet ul { padding-left: 20px; }
+.sheet-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.sheet-actions .btn { flex: 0 0 auto; width: 100%; }
 
 .tokens { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .tok { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 12px; padding: 4px 8px; border-radius: 6px; background: var(--field); }
 .tok.found { background: var(--ok-bg); color: var(--accent); }
+.tok.missing.rec { background: var(--warn-bg); color: var(--warn); }
 .tok.missing.req { background: var(--bad-bg); color: var(--bad); }
 .steps { padding-left: 20px; margin: 6px 0 0; font-size: 14px; }
 .steps li { margin-bottom: 6px; }
 code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; background: var(--field); padding: 1px 5px; border-radius: 4px; }
-.spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -1px; }
-@keyframes spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+.big-q { font-size: 18px; font-weight: 600; margin: 0 0 10px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-    <header class="top">
-        <div class="brand">
-            <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor" opacity=".08"/><path d="M16 6v20M6 16h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="16" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="7" cy="7" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="25" cy="7" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="7" cy="25" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="25" cy="25" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
-            <span>Flight Log</span>
-        </div>
-        <button class="icon-btn" id="btn-settings" type="button" aria-label="Settings">Setup</button>
-    </header>
-
-    <!-- ============ LOG VIEW ============ -->
-    <main id="view-log">
-        <div id="setup-banner" class="banner warn hidden">This phone isn't connected to your form yet. Tap <strong>Setup</strong>.</div>
-        <div id="draft-banner" class="banner ok hidden">Draft restored from your last session.</div>
-
-        <section class="panel" aria-labelledby="h-when">
-            <div class="panel-head"><h2 id="h-when">Date &amp; time</h2><button class="link-btn" id="btn-now" type="button">Now</button></div>
-            <div class="row2">
-                <label class="f"><span>Date <em>*</em></span><input type="date" id="f-date" required></label>
-                <label class="f"><span>Takeoff time <em>*</em></span><input type="time" id="f-time" required></label>
-            </div>
-            <div class="hint" id="tz-hint"></div>
-        </section>
-
-        <section class="panel" aria-labelledby="h-where">
-            <div class="panel-head"><h2 id="h-where">Position</h2><span class="chip" id="gps-status">waiting</span></div>
-            <div class="row2">
-                <label class="f"><span>Latitude <em>*</em></span><input class="mono" id="f-lat" inputmode="decimal" autocomplete="off" required></label>
-                <label class="f"><span>Longitude <em>*</em></span><input class="mono" id="f-lng" inputmode="decimal" autocomplete="off" required></label>
-            </div>
-            <label class="f"><span>Site</span><input id="f-site" maxlength="120" autocomplete="off" placeholder="e.g. North field"></label>
-            <div class="hint"><button class="link-btn" id="btn-gps" type="button">Get position again</button></div>
-        </section>
-
-        <section class="panel" aria-labelledby="h-wx">
-            <div class="panel-head"><h2 id="h-wx">Weather</h2><span class="chip" id="wx-status">waiting for position</span></div>
-            <div class="readouts">
-                <div class="readout"><div class="k">Wind</div><div class="v" id="wx-wind-v">—</div><div class="sub" id="wx-wind-sub"></div></div>
-                <div class="readout"><div class="k">Temp</div><div class="v" id="wx-temp-v">—</div><div class="sub" id="wx-temp-sub"></div></div>
-                <div class="readout wide"><div class="k">Conditions</div><div class="v" id="wx-cond-v">—</div><div class="sub" id="wx-src"></div></div>
-            </div>
-            <details class="hint">
-                <summary>Edit weather by hand</summary>
-                <label class="f"><span>Wind</span><input class="mono" id="f-wind" maxlength="80" autocomplete="off"></label>
-                <label class="f"><span>Temperature</span><input class="mono" id="f-temp" maxlength="40" autocomplete="off"></label>
-                <label class="f"><span>Conditions</span><input class="mono" id="f-cond" maxlength="160" autocomplete="off"></label>
-            </details>
-            <div class="hint">From the nearest National Weather Service station. For the log only. Use official aviation weather for go/no-go.</div>
-        </section>
-
-        <section class="panel" aria-labelledby="h-ac">
-            <div class="panel-head"><h2 id="h-ac">Aircraft &amp; crew</h2></div>
-            <div class="row2">
-                <label class="f"><span>Model <em>*</em></span><select id="f-model" required></select></label>
-                <label class="f"><span>Airframe serial <em>*</em></span><input class="mono" id="f-serial" maxlength="60" autocomplete="off" autocapitalize="characters" required></label>
-            </div>
-            <label class="f"><span>Battery IDs</span><input class="mono" id="f-batteries" maxlength="120" autocomplete="off" autocapitalize="characters" placeholder="B12, B13"></label>
-            <label class="f"><span>Visual observer</span><input id="f-observer" maxlength="80" autocomplete="off"></label>
-        </section>
-
-        <section class="panel" aria-labelledby="h-flt">
-            <div class="panel-head"><h2 id="h-flt">Flight</h2></div>
-            <label class="f"><span>Test card</span><input class="mono" id="f-card" maxlength="60" autocomplete="off" autocapitalize="characters"></label>
-            <div class="row2">
-                <label class="f"><span>Duration (min) <em>*</em></span><input class="mono" id="f-duration" inputmode="numeric" maxlength="4" autocomplete="off" required></label>
-                <label class="f"><span>Max alt (m AGL) <em>*</em></span><input class="mono" id="f-altitude" inputmode="numeric" maxlength="4" autocomplete="off" required></label>
-            </div>
-            <div class="hint" id="alt-hint"></div>
-            <label class="f"><span>Outcome <em>*</em></span></label>
-            <div class="seg" role="radiogroup" aria-label="Outcome">
-                <input type="radio" name="outcome" id="o-nom" value="nominal"><label for="o-nom">Nominal</label>
-                <input type="radio" name="outcome" id="o-ano" value="anomaly"><label for="o-ano">Anomaly</label>
-                <input type="radio" name="outcome" id="o-inc" value="incident"><label for="o-inc">Incident</label>
-            </div>
-            <label class="f"><span>Notes</span><textarea id="f-notes" maxlength="1000" placeholder="Purpose, anything unusual"></textarea></label>
-        </section>
-    </main>
-
-    <!-- ============ REVIEW VIEW ============ -->
-    <main id="view-review" class="hidden">
-        <section class="panel">
-            <div class="panel-head"><h2>Check before sending</h2></div>
-            <dl class="review" id="review-list"></dl>
-        </section>
-        <div class="banner ok">Next, your Microsoft Form opens with everything filled in. <strong>Tap Submit there</strong>; that's what writes the row to Excel.</div>
-        <div id="review-missing" class="banner warn hidden"></div>
-    </main>
-
-    <!-- ============ SETUP VIEW ============ -->
-    <main id="view-setup" class="hidden">
-        <section class="panel">
-            <div class="panel-head"><h2>Connect your form</h2></div>
-            <ol class="steps">
-                <li>In Microsoft Forms, add one <strong>Text</strong> question per field (no number or date restrictions).</li>
-                <li>Click <strong>⋯ → Get pre-filled URL</strong>. In each question, type its code from the list below, for example <code>__lat__</code>.</li>
-                <li>Copy the link and paste it here.</li>
-            </ol>
-            <label class="f"><span>Pre-filled form link</span><textarea id="s-url" class="mono" rows="4" autocomplete="off" spellcheck="false" placeholder="https://forms.office.com/Pages/ResponsePage.aspx?id=…"></textarea></label>
-            <div class="hint" id="s-url-msg"></div>
-            <div class="tokens" id="s-tokens"></div>
-            <label class="f"><span>Aircraft models (comma-separated)</span><input id="s-models" autocomplete="off" placeholder="M1"></label>
-        </section>
-        <section class="panel">
-            <div class="panel-head"><h2>Share with other pilots</h2></div>
-            <div class="hint">This makes a link that sets up another phone with the same form. Send it only through company channels.</div>
-            <div class="dock-inline"><button class="link-btn" id="btn-share" type="button">Copy setup link</button></div>
-            <div class="hint" id="share-msg"></div>
-        </section>
-        <section class="panel">
-            <div class="panel-head"><h2>On this phone</h2></div>
-            <div class="hint">Settings and any unsent draft are kept only in this browser. The weather lookup sends your position rounded to about 1 km. Nothing else leaves the phone until you submit the form.</div>
-            <button class="link-btn" id="btn-wipe" type="button">Clear settings and draft</button>
-        </section>
-    </main>
+    <header class="top" id="top"></header>
+    <main id="view"></main>
 </div>
-
-<div class="dock">
-    <div class="inner" id="dock-log"><button class="btn secondary" id="btn-clear" type="button">Clear</button><button class="btn" id="btn-review" type="button">Review</button></div>
-    <div class="inner hidden" id="dock-review"><button class="btn secondary" id="btn-back" type="button">Edit</button><button class="btn" id="btn-open" type="button">Open form to submit</button></div>
-    <div class="inner hidden" id="dock-setup"><button class="btn secondary" id="btn-setup-cancel" type="button">Back</button><button class="btn" id="btn-setup-save" type="button">Save</button></div>
-</div>
+<div class="dock"><div class="inner" id="dock"></div></div>
 
 <script>
 'use strict';
 (function () {
-    // ---------- config ----------
+    // =====================================================================
+    // Config
+    // =====================================================================
+    var BUILD = 'e4eb16e';
     // Hosts a pre-filled link may point at. Prevents a tampered setup link from sending entries elsewhere.
     var FORM_HOSTS = ['forms.office.com', 'forms.office365.us', 'forms.osi.office365.us', 'forms.microsoft.com', 'forms.cloud.microsoft'];
+    // Form codes. req = the form must have it; rec = recommended (Setup and Review warn when missing).
     var FIELDS = [
         { tok: 'date', label: 'Date', req: true },
-        { tok: 'time', label: 'Time', req: true },
-        { tok: 'lat', label: 'Latitude', req: true },
-        { tok: 'lng', label: 'Longitude', req: true },
-        { tok: 'site', label: 'Site' },
+        { tok: 'time', label: 'Start time', req: true },
         { tok: 'model', label: 'Model', req: true },
-        { tok: 'serial', label: 'Serial', req: true },
+        { tok: 'duration', label: 'Duration (min)', req: true },
+        { tok: 'outcome', label: 'Outcome', req: true },
+        { tok: 'flightid', label: 'Flight ID', rec: true },
+        { tok: 'serial', label: 'Serial', rec: true },
+        { tok: 'mission', label: 'Mission', rec: true },
+        { tok: 'start', label: 'Start (UTC)', rec: true },
+        { tok: 'end', label: 'End (UTC)', rec: true },
+        { tok: 'lat', label: 'Latitude', rec: true },
+        { tok: 'lng', label: 'Longitude', rec: true },
+        { tok: 'gps', label: 'Location source', rec: true },
+        { tok: 'preflight', label: 'Preflight', rec: true },
+        { tok: 'issues', label: 'Issues', rec: true },
+        { tok: 'postcheck', label: 'Postflight inspection', rec: true },
+        { tok: 'open', label: 'Open items', rec: true },
+        { tok: 'site', label: 'Site' },
+        { tok: 'card', label: 'Project / test card' },
         { tok: 'batteries', label: 'Batteries' },
         { tok: 'observer', label: 'Observer' },
-        { tok: 'card', label: 'Test card' },
-        { tok: 'duration', label: 'Duration (min)', req: true },
-        { tok: 'altitude', label: 'Max alt (m AGL)', req: true },
-        { tok: 'outcome', label: 'Outcome', req: true },
+        { tok: 'altitude', label: 'Max alt (m AGL, est.)' },
+        { tok: 'incident', label: 'Incident' },
         { tok: 'wind', label: 'Wind' },
         { tok: 'temp', label: 'Temp' },
         { tok: 'conditions', label: 'Conditions' },
+        { tok: 'wxsource', label: 'Weather source' },
+        { tok: 'observed', label: 'Pilot observations' },
         { tok: 'notes', label: 'Notes' }
     ];
-    var SETTINGS_KEY = 'flightlog.settings.v1';
-    var DRAFT_KEY = 'flightlog.draft.v1';
-    var ALT_LIMIT_M = 122; // 400 ft AGL
+    var MISSIONS = ['Recreational', 'Photography / Videography', 'Inspection', 'Mapping / Surveying', 'Research / Testing', 'Training', 'Drone Show', 'Other'];
+    var PRE = [
+        { id: 'frame', short: 'Frame/arms', label: 'Frame / arms secure', crit: true, group: 'Airframe & power', help: 'Arms locked, no cracks, fasteners tight, landing gear sound.' },
+        { id: 'battery', short: 'Battery', label: 'Battery secure / undamaged', crit: true, help: 'Latched, no swelling, dents or damaged leads; charge suits the planned flight.' },
+        { id: 'nav', short: 'GPS/compass/IMU', label: 'GPS / compass / IMU status', crit: true, group: 'Navigation & links', help: 'As shown on your controller or ground station: satellite lock, no compass or IMU warnings, calibrated if required. This app does not read them.' },
+        { id: 'link', short: 'Telemetry/video', label: 'Telemetry / video link', na: true, help: 'Telemetry and video showing normally. Mark N/A if the aircraft has neither.' },
+        { id: 'payload', short: 'Payload', label: 'Payload secure', na: true, group: 'Payload & propulsion', help: 'Camera, gimbal or sensor mounted and locked; cables secured. N/A if none fitted.' },
+        { id: 'props', short: 'Motors/props', label: 'Motors / propellers inspected', crit: true, help: 'Props undamaged, correct orientation and tight; motors spin freely with no grit or noise.' },
+        { id: 'fc', short: 'FC/firmware', label: 'Flight controller / firmware checked', crit: true, group: 'Control & failsafe', help: 'Expected firmware and parameters loaded; no arming warnings.' },
+        { id: 'rc', short: 'RC/failsafe', label: 'RC link / failsafe checked', crit: true, help: 'Controller bound, range check if required, failsafe action set.' },
+        { id: 'rth', short: 'RTH/RTL', label: 'Return-to-home / RTL settings', crit: true, na: true, help: 'Home point and return altitude suit this site’s obstacles. N/A if the aircraft has no return-to-home.' },
+        { id: 'site', short: 'Airspace/site/wx', label: 'Airspace / site / weather reviewed', crit: true, group: 'Operation', help: 'Authorization if required, NOTAMs/TFRs, site hazards, people nearby, weather within limits.' }
+    ];
+    var POST = [
+        { id: 'battery', short: 'Battery', label: 'Battery disconnected / inspected', link: ['battery'] },
+        { id: 'props', short: 'Props/frame', label: 'Propellers / frame inspected', link: ['props', 'hard'] },
+        { id: 'motors', short: 'Motors/ESCs', label: 'Motors / ESCs checked for heat or unusual behavior', link: ['motor'] },
+        { id: 'payload', short: 'Payload', label: 'Payload and accessories inspected', na: true, link: ['payload'] },
+        { id: 'damage', short: 'Damage', label: 'Aircraft damage or abnormal condition assessed', link: ['hard'] },
+        { id: 'maint', short: 'Maintenance', label: 'Maintenance or repair needs identified', help: 'Mark Issue if anything needs maintenance or repair before the next flight.', link: [] }
+    ];
+    var OUTCOMES = [
+        { id: 'normal', label: 'Completed normally' },
+        { id: 'issue', label: 'Completed with an issue', cls: 'warn' },
+        { id: 'aborted', label: 'Aborted before completion', cls: 'warn' },
+        { id: 'emergency', label: 'Emergency landing / emergency termination', cls: 'bad' }
+    ];
+    var ISSUES = [
+        { id: 'none', label: 'No issues observed', excl: true },
+        { id: 'battery', label: 'Battery issue' },
+        { id: 'props', label: 'Propeller or frame issue' },
+        { id: 'motor', label: 'Motor / ESC overheating or unusual behavior' },
+        { id: 'nav', label: 'GPS / compass / navigation issue' },
+        { id: 'link', label: 'RC, telemetry, or video-link issue' },
+        { id: 'fc', label: 'Flight-controller warning or unexpected behavior' },
+        { id: 'payload', label: 'Payload issue' },
+        { id: 'hard', label: 'Hard landing or suspected damage', crit: true },
+        { id: 'other', label: 'Other' },
+        { id: 'unassessed', label: 'Not yet assessed', excl: true }
+    ];
+    var STEPS = ['preflight', 'flightsetup', 'active', 'outcome', 'inspect', 'review'];
+    var STEP_LABEL = { preflight: 'Preflight checklist', flightsetup: 'Flight setup', active: 'Flight in progress', outcome: 'Postflight', inspect: 'Postflight inspection', review: 'Review' };
+    var LONG_FLIGHT_MIN = 90;   // ask to verify the end time beyond this
+    var ALT_LIMIT_M = 122;      // 400 ft AGL
+    var URL_WARN = 7000;        // very long pre-filled links may be cut off
+
+    var K = { settings: 'flightlog.settings.v1', prefs: 'flightlog.prefs.v1', flights: 'flightlog.flights.v1',
+        current: 'flightlog.current.v1', carry: 'flightlog.carry.v1', oldDraft: 'flightlog.draft.v1' };
 
     var $ = function (id) { return document.getElementById(id); };
     var store = {
         get: function (k) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } },
-        set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ } },
+        set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
         del: function (k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
     };
 
-    var settings = store.get(SETTINGS_KEY) || { url: '', models: ['M1'] };
-    var wxAuto = { wind: '', temp: '', conditions: '' };
+    var settings = store.get(K.settings) || { url: '', models: ['M1'] };
+    var prefs = store.get(K.prefs) || { aircraft: [], selected: null, mission: '', site: '', observer: '' };
+    var flights = store.get(K.flights) || {};
+    var carry = store.get(K.carry) || {};
+    var currentId = store.get(K.current);
+    var ui = { view: 'home', handoffId: null, aircraftReturn: 'home', lastDone: null, gps: '', wx: '', showManualLoc: false, timer: null, openHelp: {} };
 
-    // ---------- helpers ----------
+    // =====================================================================
+    // Helpers
+    // =====================================================================
     function pad(n) { return String(n).padStart(2, '0'); }
     function localDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
     function localTime(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+    function isoZ(d) { return d.toISOString().replace(/\.\d{3}Z$/, 'Z'); }
     function utcOffset(d) {
         var m = -d.getTimezoneOffset(), s = m >= 0 ? '+' : '-';
         m = Math.abs(m);
         return 'UTC' + s + pad(Math.floor(m / 60)) + ':' + pad(m % 60);
     }
+    function tzName() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } }
+    function toLocalInput(iso) { var d = new Date(iso); return localDate(d) + 'T' + localTime(d); }
+    function fromLocalInput(v) { var d = new Date(v); return v && !isNaN(d) ? isoZ(d) : null; }
+    function fmtClock(ms) {
+        var s = Math.max(0, Math.floor(ms / 1000)), hh = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60), ss = s % 60;
+        return (hh ? hh + ':' + pad(mm) : pad(mm)) + ':' + pad(ss);
+    }
+    function fmtDur(ms) {
+        var m = Math.round(ms / 60000);
+        return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + pad(m % 60) + ' min';
+    }
+    function durMin(r) { return (r.startAt && r.endAt) ? (new Date(r.endAt) - new Date(r.startAt)) / 60000 : null; }
     function clean(s) {
         // strip control, zero-width and bidi-override characters; normalize look-alikes
         return String(s == null ? '' : s).normalize('NFC')
@@ -335,9 +383,261 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
         return dirs[Math.round(deg / 22.5) % 16];
     }
-    function setText(id, t) { $(id).textContent = t; }
-    function chip(id, text, cls) { var el = $(id); el.textContent = text; el.className = 'chip' + (cls ? ' ' + cls : ''); }
+    function uuid() {
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        var b = crypto.getRandomValues(new Uint8Array(16));
+        b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+        var x = Array.prototype.map.call(b, function (n) { return n.toString(16).padStart(2, '0'); }).join('');
+        return x.slice(0, 8) + '-' + x.slice(8, 12) + '-' + x.slice(12, 16) + '-' + x.slice(16, 20) + '-' + x.slice(20);
+    }
+    function byId(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
 
+    // DOM builder: text only, never innerHTML.
+    function h(tag, props) {
+        var el = document.createElement(tag);
+        if (props) Object.keys(props).forEach(function (k) {
+            var v = props[k];
+            if (v == null || v === false) return;
+            if (k === 'class') el.className = v;
+            else if (k === 'text') el.textContent = v;
+            else if (k.slice(0, 2) === 'on') el.addEventListener(k.slice(2), v);
+            else if (k === 'value' || k === 'checked' || k === 'disabled' || k === 'hidden') el[k] = v;
+            else el.setAttribute(k, v === true ? '' : v);
+        });
+        for (var i = 2; i < arguments.length; i++) add(el, arguments[i]);
+        return el;
+    }
+    function add(el, c) {
+        if (arguments.length > 2) { for (var i = 1; i < arguments.length; i++) add(el, arguments[i]); return; }
+        if (c == null || c === false) return;
+        if (Array.isArray(c)) { c.forEach(function (x) { add(el, x); }); return; }
+        el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    }
+    function panel(title, right) {
+        var kids = Array.prototype.slice.call(arguments, 2);
+        return h('section', { class: 'panel' }, title ? h('div', { class: 'panel-head' }, h('h2', { text: title }), right || null) : null, kids);
+    }
+    function field(label, input, required) { return h('label', { class: 'f' }, h('span', null, label, required ? h('em', { text: ' *' }) : null), input); }
+    function tag(kind, text) { return h('span', { class: 'tag ' + kind, text: text }); }
+
+    function sheet(title, body, actions) {
+        var back = h('div', { class: 'sheet-back' });
+        var close = function () { back.remove(); };
+        var box = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
+            h('h3', { text: title }), body,
+            h('div', { class: 'sheet-actions' }, actions.map(function (a) {
+                return h('button', { type: 'button', class: 'btn' + (a.primary ? '' : a.danger ? ' danger' : ' secondary'),
+                    onclick: function () { close(); if (a.fn) a.fn(); } }, a.label);
+            })));
+        back.appendChild(box);
+        back.addEventListener('click', function (e) { if (e.target === back) close(); });
+        document.body.appendChild(back);
+    }
+
+    // =====================================================================
+    // Persistence (on-device drafts; the Microsoft Form is the system of record)
+    // =====================================================================
+    var storageWarned = false;
+    function saveAll() {
+        var a = store.set(K.flights, flights), b = store.set(K.prefs, prefs), c = store.set(K.carry, carry);
+        if (currentId) store.set(K.current, currentId); else store.del(K.current);
+        if (!(a && b && c) && !storageWarned) {
+            storageWarned = true;
+            sheet('Can’t save on this phone', h('p', { text: 'Safari blocked storage (Private Browsing or storage full). Entries will be lost if the app closes. Open the app outside Private Browsing.' }), [{ label: 'OK', primary: true }]);
+        }
+        return a && b && c;
+    }
+    function cur() { return currentId ? flights[currentId] || null : null; }
+    function touch(r) { r.updatedAt = isoZ(new Date()); flights[r.id] = r; return saveAll(); }
+
+    function selectedAircraft() { return byId(prefs.aircraft, prefs.selected); }
+    function carryFor(serial) { return serial && carry[serial] ? carry[serial] : null; }
+    // Before takeoff a draft always reflects the current open items for its aircraft
+    // (they may have been recorded after the draft was created, or the aircraft changed).
+    function syncCarry(r) {
+        if (!r || r.startAt) return;
+        var serial = r.aircraft && r.aircraft.serial, c = carryFor(serial);
+        var want = c && !c.resolvedAt ? { serial: serial, text: c.text, from: c.at, resolvedAt: null } : null;
+        var resolvedHere = r.carry && r.carry.resolvedAt && r.carry.serial === serial;
+        if (resolvedHere) return;
+        if (JSON.stringify(want) !== JSON.stringify(r.carry)) { r.carry = want; touch(r); }
+    }
+
+    function newRecord() {
+        var a = selectedAircraft(), now = new Date();
+        var c = a ? carryFor(a.serial) : null;
+        var r = {
+            v: 2, id: uuid(), createdAt: isoZ(now), tz: tzName(), status: 'draft', step: 'preflight',
+            aircraft: a ? { model: a.model, serial: a.serial } : null,
+            mission: prefs.mission || '', site: prefs.site || '', observer: prefs.observer || '',
+            card: '', batteries: '', observed: '',
+            location: null, weather: null,
+            pre: {}, preAck: null,
+            carry: c ? { serial: a.serial, text: c.text, from: c.at, resolvedAt: c.resolvedAt || null } : null,
+            startAt: null, endAt: null, corrections: [],
+            outcome: '', issues: [], issueNotes: {}, incident: { what: '', harm: '' },
+            post: {}, altitude: '', notes: '', returnTo: null, attempts: 0
+        };
+        if (c && c.resolvedAt) delete carry[a.serial];
+        flights[r.id] = r;
+        currentId = r.id;
+        saveAll();
+        return r;
+    }
+
+    // One-time migration of a draft saved by the previous single-screen version.
+    function migrateOldDraft() {
+        var d = store.get(K.oldDraft);
+        if (!d) return;
+        store.del(K.oldDraft);
+        if (!(d.serial || d.notes || d.duration || d.card)) return;
+        var model = d.model || (settings.models || ['M1'])[0];
+        if (d.serial && !prefs.aircraft.some(function (a) { return a.serial === d.serial; })) {
+            var a = { id: uuid(), model: model, serial: d.serial };
+            prefs.aircraft.push(a);
+            if (!prefs.selected) prefs.selected = a.id;
+        }
+        var r = newRecord();
+        r.aircraft = { model: model, serial: d.serial || '' };
+        ['site', 'batteries', 'observer', 'card', 'notes'].forEach(function (k) { if (d[k]) r[k] = d[k]; });
+        if (d.lat && d.lng) r.location = { lat: Number(d.lat), lng: Number(d.lng), source: 'manual' };
+        if (d.wind || d.temp || d.cond) r.weather = { source: 'pilot', wind: d.wind || '', temp: d.temp || '', cond: d.cond || '' };
+        if (d.date && d.time) {
+            var s = new Date(d.date + 'T' + d.time);
+            if (!isNaN(s)) {
+                r.startAt = isoZ(s);
+                if (/^\d+$/.test(d.duration || '')) r.endAt = isoZ(new Date(s.getTime() + Number(d.duration) * 60000));
+            }
+        }
+        if (d.altitude) r.altitude = d.altitude;
+        r.outcome = { nominal: 'normal', anomaly: 'issue' }[d.outcome] || '';
+        if (d.outcome === 'incident') r.notes = ('Previous app outcome: incident. ' + (r.notes || '')).trim();
+        r.preAck = { migrated: true };
+        r.step = r.startAt && r.endAt ? 'review' : 'flightsetup';
+        touch(r);
+    }
+
+    // =====================================================================
+    // Checklist state (every result is a pilot attestation)
+    // =====================================================================
+    function item(map, id) { return map[id] || { s: '', note: '', hist: [] }; }
+    function setItem(r, key, id, s) {
+        var it = item(r[key], id);
+        if (it.s === s) return;
+        it.hist = (it.hist || []).concat([{ s: s, at: isoZ(new Date()), note: it.note || undefined }]);
+        it.s = s;
+        r[key][id] = it;
+        touch(r);
+    }
+    function wasIssue(it) { return (it.hist || []).some(function (x) { return x.s === 'issue'; }); }
+    function changedAfterStart(r, it) {
+        if (!r.startAt) return false;
+        return (it.hist || []).some(function (x) { return x.at > r.startAt; });
+    }
+    function stLabel(s) { return { pass: 'Pass', issue: 'Issue', na: 'N/A' }[s] || 'Not checked'; }
+    function counts(r, key, defs) {
+        var c = { pass: 0, issue: 0, na: 0, none: 0, critIssue: [] };
+        defs.forEach(function (d) {
+            var s = item(r[key], d.id).s;
+            if (s) c[s]++; else c.none++;
+            if (s === 'issue' && d.crit) c.critIssue.push(d);
+        });
+        return c;
+    }
+
+    // =====================================================================
+    // Derived values: summaries, open items, flags
+    // =====================================================================
+    function checklistText(r, key, defs) {
+        return defs.map(function (d, i) {
+            var it = item(r[key], d.id), t = (i + 1) + ' ' + d.short + ': ' + stLabel(it.s);
+            if (it.note && (it.s === 'issue' || wasIssue(it))) t += ' (' + it.note + ')';
+            if (it.s !== 'issue' && wasIssue(it)) t += ' [issue fixed]';
+            if (key === 'pre' && changedAfterStart(r, it)) t += ' [changed after start]';
+            return t;
+        }).join(' | ');
+    }
+    function issueText(r) {
+        var out = [];
+        if (!r.issues.length) out.push('Not answered');
+        r.issues.forEach(function (id) {
+            var d = byId(ISSUES, id), n = clean(r.issueNotes[id] || '');
+            out.push(d.label + (n ? ': ' + n : ''));
+        });
+        POST.forEach(function (d) {
+            var it = item(r.post, d.id);
+            if (it.s !== 'issue') return;
+            var linked = d.link.some(function (x) { return r.issues.indexOf(x) !== -1; });
+            if (!linked) out.push('Found in inspection – ' + d.short + (it.note ? ': ' + it.note : ''));
+        });
+        return out.join('; ');
+    }
+    function openItems(r) {
+        var out = [];
+        if (r.carry && !r.carry.resolvedAt) out.push({ text: 'Carried over from a previous flight: ' + r.carry.text, crit: true, carried: true });
+        PRE.forEach(function (d) {
+            var it = item(r.pre, d.id);
+            if (it.s === 'issue') out.push({ text: (d.crit ? 'Critical preflight issue: ' : 'Preflight issue: ') + d.label + (it.note ? ' – ' + it.note : ''), crit: !!d.crit });
+        });
+        if (r.outcome === 'emergency') out.push({ text: 'Emergency landing / termination', crit: true });
+        var byIssue = {};
+        r.issues.forEach(function (id) {
+            if (id === 'none') return;
+            var d = byId(ISSUES, id), n = clean(r.issueNotes[id] || '');
+            var o = id === 'unassessed' ? { text: 'Aircraft not yet assessed after flight', crit: true } : { text: d.label + (n ? ' – ' + n : ''), crit: !!d.crit, note: n };
+            byIssue[id] = o;
+            out.push(o);
+        });
+        POST.forEach(function (d) {
+            var it = item(r.post, d.id);
+            if (it.s !== 'issue') return;
+            var crit = d.id === 'damage' || d.id === 'maint';
+            var linked = d.link.filter(function (x) { return byIssue[x]; })[0];
+            if (linked) { // same problem reported after the flight: one line, not two
+                var o = byIssue[linked];
+                o.text += ' (confirmed in inspection' + (it.note && it.note !== o.note ? ': ' + it.note : '') + ')';
+                o.crit = o.crit || crit;
+                return;
+            }
+            out.push({ text: 'Inspection: ' + d.label + (it.note ? ' – ' + it.note : ''), crit: crit });
+        });
+        if (r.incident.harm === 'yes') out.push({ text: 'Injury or damage to property other than the aircraft', crit: true });
+        return out;
+    }
+    function formStatus() {
+        var p = parseFormUrl(settings.url || '');
+        if (p.error) return { ok: false, p: p };
+        var miss = FIELDS.filter(function (f) { return f.req && !p.found[f.tok]; });
+        return { ok: !miss.length, p: p };
+    }
+    function flags(r) {
+        var f = { missing: [], block: [], warn: [], open: openItems(r) };
+        if (!r.aircraft || !r.aircraft.model) f.missing.push({ text: 'Aircraft', step: 'flightsetup' });
+        if (!r.startAt || !r.endAt) f.missing.push({ text: 'Flight start and end times', step: 'times' });
+        if (!r.outcome) f.missing.push({ text: 'How the flight went', step: 'outcome' });
+        if (!formStatus().ok) f.missing.push({ text: 'Microsoft Form link (Setup)', step: 'settings' });
+        var now = Date.now();
+        if (r.startAt && r.endAt && new Date(r.endAt) <= new Date(r.startAt)) f.block.push({ text: 'End time is not after start time.', step: 'times' });
+        if (r.startAt && new Date(r.startAt) > now + 120000) f.block.push({ text: 'Start time is in the future.', step: 'times' });
+        if (r.endAt && new Date(r.endAt) > now + 120000) f.block.push({ text: 'End time is in the future.', step: 'times' });
+        var dm = durMin(r);
+        if (dm != null && dm > 12 * 60) f.warn.push({ text: 'Duration is over 12 hours. Check the times.', step: 'times' });
+        if (!r.mission) f.warn.push({ text: 'Mission type not set.', step: 'flightsetup' });
+        var c = counts(r, 'pre', PRE);
+        if (c.none && !(r.preAck && r.preAck.migrated)) f.warn.push({ text: c.none + ' preflight item' + (c.none > 1 ? 's' : '') + ' not checked.', step: 'preflight' });
+        if (PRE.some(function (d) { return changedAfterStart(r, item(r.pre, d.id)); })) f.warn.push({ text: 'Preflight results were changed after the flight started.', step: 'preflight' });
+        if (!r.issues.length) f.warn.push({ text: 'Aircraft-issues question not answered.', step: 'outcome' });
+        if (r.location && r.location.at && r.startAt && Math.abs(new Date(r.startAt) - new Date(r.location.at)) > 2 * 3600000) f.warn.push({ text: 'Phone location was captured more than 2 hours from the flight start.', step: 'flightsetup' });
+        if (r.weather && r.weather.observedAt && r.startAt && Math.abs(new Date(r.startAt) - new Date(r.weather.observedAt)) > 2 * 3600000) f.warn.push({ text: 'Weather observation is more than 2 hours from the flight start.', step: 'flightsetup' });
+        if (!r.location || r.location.source === 'none') f.warn.push({ text: 'No location recorded.', step: 'flightsetup' });
+        var fs = formStatus();
+        if (fs.ok && buildUrl(fs.p.url, valuesForForm(r)).length > URL_WARN) f.warn.push({ text: 'This entry is very long. If the form opens with blank answers, shorten the notes.', step: null });
+        return f;
+    }
+
+    // =====================================================================
+    // Form link handling (existing)
+    // =====================================================================
     function parseFormUrl(raw) {
         var u;
         try { u = new URL(clean(raw)); } catch (e) { return { error: 'That isn’t a valid link.' }; }
@@ -348,97 +648,70 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         FIELDS.forEach(function (f) { found[f.tok] = u.href.indexOf('__' + f.tok + '__') !== -1; });
         return { url: u.href, found: found };
     }
-
-    // ---------- views ----------
-    var views = { log: $('view-log'), review: $('view-review'), setup: $('view-setup') };
-    var docks = { log: $('dock-log'), review: $('dock-review'), setup: $('dock-setup') };
-    function show(name) {
-        Object.keys(views).forEach(function (k) {
-            views[k].classList.toggle('hidden', k !== name);
-            docks[k].classList.toggle('hidden', k !== name);
-        });
-        window.scrollTo(0, 0);
+    function valuesForForm(r) {
+        var s = r.startAt ? new Date(r.startAt) : new Date(r.createdAt);
+        var loc = r.location, w = r.weather || {}, dm = durMin(r);
+        var gps = !loc || loc.source === 'none' ? 'Not recorded'
+            : loc.source === 'manual' ? 'Entered by pilot'
+            : 'Phone GPS ±' + Math.round(loc.acc) + ' m at ' + loc.at + ' (phone location, not verified takeoff point)';
+        var wxsrc = !r.weather || r.weather.source === 'none' ? 'Unavailable'
+            : r.weather.source === 'pilot' ? 'Entered by pilot'
+            : 'NWS station ' + w.station + ', observed ' + w.observedAt;
+        var open = openItems(r).map(function (o) { return o.text; }).join('; ');
+        var inc = '';
+        if (r.incident.what || r.incident.harm) {
+            inc = 'Injury/third-party damage: ' + ({ yes: 'Yes', no: 'No', unknown: 'Unknown' }[r.incident.harm] || 'Not answered') +
+                (clean(r.incident.what) ? '. ' + clean(r.incident.what) : '');
+        }
+        var corr = r.corrections.map(function (c) { return c.field + ' corrected from ' + c.from + ' to ' + c.to + ' at ' + c.at; }).join('; ');
+        return {
+            flightid: r.id,
+            date: localDate(s),
+            time: localTime(s) + ' (' + utcOffset(s) + ')',
+            start: r.startAt || '', end: r.endAt || '',
+            duration: dm == null ? '' : String(Math.round(dm * 10) / 10),
+            lat: loc && loc.lat != null ? String(loc.lat) : '', lng: loc && loc.lng != null ? String(loc.lng) : '', gps: gps,
+            site: r.site, model: r.aircraft ? r.aircraft.model : '', serial: r.aircraft ? r.aircraft.serial : '',
+            mission: r.mission, card: r.card, batteries: r.batteries, observer: r.observer,
+            altitude: r.altitude, outcome: (byId(OUTCOMES, r.outcome) || {}).label || '',
+            issues: issueText(r), incident: inc,
+            preflight: checklistText(r, 'pre', PRE), postcheck: checklistText(r, 'post', POST),
+            open: open || 'None',
+            wind: w.wind || '', temp: w.temp || '', conditions: w.cond || '', wxsource: wxsrc,
+            observed: r.observed,
+            notes: [clean(r.notes), corr ? 'Time corrections: ' + corr : ''].filter(Boolean).join(' — ')
+        };
+    }
+    function buildUrl(base, vals) {
+        var url = base;
+        FIELDS.forEach(function (f) { url = url.split('__' + f.tok + '__').join(encodeURIComponent(vals[f.tok] || '')); });
+        return url;
     }
 
-    // ---------- form state ----------
-    var IDS = ['date', 'time', 'lat', 'lng', 'site', 'model', 'serial', 'batteries', 'observer', 'card',
-        'duration', 'altitude', 'notes', 'wind', 'temp', 'cond'];
-    function readForm() {
-        var v = {};
-        IDS.forEach(function (k) { v[k] = clean($('f-' + k).value); });
-        var o = document.querySelector('input[name=outcome]:checked');
-        v.outcome = o ? o.value : '';
-        return v;
-    }
-    function writeForm(v) {
-        IDS.forEach(function (k) { if (v[k] != null) $('f-' + k).value = v[k]; });
-        if (v.outcome) { var r = document.querySelector('input[name=outcome][value="' + v.outcome + '"]'); if (r) r.checked = true; }
-    }
-    function saveDraft() { store.set(DRAFT_KEY, readForm()); }
-
-    function renderModels() {
-        var sel = $('f-model'), cur = sel.value;
-        sel.textContent = '';
-        var models = (settings.models && settings.models.length) ? settings.models : ['M1'];
-        models.forEach(function (m) { var o = document.createElement('option'); o.value = m; o.textContent = m; sel.appendChild(o); });
-        if (models.indexOf(cur) !== -1) sel.value = cur;
-    }
-
-    function fillNow() {
-        var d = new Date();
-        $('f-date').value = localDate(d);
-        $('f-time').value = localTime(d);
-        updateTz();
-    }
-    function updateTz() { setText('tz-hint', 'Local time, ' + utcOffset(new Date()) + '. This offset is sent with the time.'); }
-
-    // ---------- validation ----------
-    function validate(v) {
-        var errs = [];
-        function bad(id, msg) { errs.push(msg); $(id).setAttribute('aria-invalid', 'true'); }
-        IDS.forEach(function (k) { $('f-' + k).removeAttribute('aria-invalid'); });
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(v.date)) bad('f-date', 'Date is required.');
-        else if (v.date > localDate(new Date())) bad('f-date', 'Date can’t be in the future.');
-        if (!/^\d{2}:\d{2}$/.test(v.time)) bad('f-time', 'Time is required.');
-        var lat = Number(v.lat), lng = Number(v.lng);
-        if (v.lat === '' || !isFinite(lat) || lat < -90 || lat > 90) bad('f-lat', 'Latitude must be between -90 and 90.');
-        if (v.lng === '' || !isFinite(lng) || lng < -180 || lng > 180) bad('f-lng', 'Longitude must be between -180 and 180.');
-        if (!v.model) bad('f-model', 'Model is required.');
-        if (!v.serial) bad('f-serial', 'Airframe serial is required.');
-        if (!/^\d{1,4}$/.test(v.duration) || +v.duration < 1 || +v.duration > 600) bad('f-duration', 'Duration must be 1–600 minutes.');
-        if (!/^\d{1,4}$/.test(v.altitude) || +v.altitude > 3000) bad('f-altitude', 'Max altitude must be 0–3000 m.');
-        if (!v.outcome) errs.push('Pick an outcome.');
-        return errs;
-    }
-    function altHint() {
-        var a = Number($('f-altitude').value), el = $('alt-hint');
-        if (!$('f-altitude').value || !isFinite(a)) { el.textContent = ''; el.className = 'hint'; return; }
-        var ft = Math.round(a * 3.28084);
-        el.textContent = '≈ ' + ft + ' ft AGL' + (a > ALT_LIMIT_M ? '. Above 400 ft, so note the waiver or authorization.' : '');
-        el.className = 'hint' + (a > ALT_LIMIT_M ? ' warn' : '');
-    }
-
-    // ---------- GPS ----------
-    function getPosition() {
-        if (!('geolocation' in navigator)) { chip('gps-status', 'not supported', 'bad'); return; }
-        chip('gps-status', 'locating…');
+    // =====================================================================
+    // GPS + weather (existing services)
+    // =====================================================================
+    function getPosition(r) {
+        if (!('geolocation' in navigator)) { ui.gps = 'unsupported'; render(); return; }
+        ui.gps = 'locating';
+        render();
         navigator.geolocation.getCurrentPosition(function (p) {
-            $('f-lat').value = p.coords.latitude.toFixed(6);
-            $('f-lng').value = p.coords.longitude.toFixed(6);
-            chip('gps-status', '±' + Math.round(p.coords.accuracy) + ' m', p.coords.accuracy <= 50 ? 'ok' : '');
-            saveDraft();
-            getWeather(p.coords.latitude, p.coords.longitude);
+            if (cur() !== r) return;
+            r.location = { lat: Number(p.coords.latitude.toFixed(6)), lng: Number(p.coords.longitude.toFixed(6)),
+                acc: p.coords.accuracy, at: isoZ(new Date()), source: 'phone' }; // maximumAge 0: a fresh fix
+            ui.gps = '';
+            touch(r);
+            render();
+            getWeather(r);
         }, function (err) {
-            chip('gps-status', err.code === 1 ? 'permission denied' : 'unavailable', 'bad');
-            if (err.code === 1) setText('wx-status', 'enable Location for Safari');
+            ui.gps = err.code === 1 ? 'denied' : 'unavailable';
+            render();
         }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
     }
-
-    // ---------- weather (api.weather.gov, US only) ----------
     function fetchJson(url) {
         var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, 9000);
         return fetch(url, { headers: { Accept: 'application/geo+json' }, signal: ctl.signal, referrerPolicy: 'no-referrer', credentials: 'omit' })
-            .then(function (r) { clearTimeout(t); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+            .then(function (res) { clearTimeout(t); if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); });
     }
     function qv(q) { return q && typeof q.value === 'number' ? q : null; }
     function toKmh(q) {
@@ -447,15 +720,14 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         if (/kt|knot/.test(q.unitCode)) return q.value * 1.852;
         return q.value; // km_h-1 (NWS default)
     }
-
     function formatWx(p, stationId) {
-        var out = { wind: '', windSub: '', temp: '', tempSub: '', cond: '', src: '' };
+        var out = { wind: '', windSub: '', temp: '', tempSub: '', cond: '' };
         var spd = toKmh(qv(p.windSpeed)), gust = toKmh(qv(p.windGust)), dir = qv(p.windDirection);
         if (spd != null) {
             var kt = Math.round(spd / 1.852), mph = Math.round(spd / 1.609344);
             if (kt === 0) { out.wind = 'Calm'; }
             else {
-                var d = dir ? pad(Math.round(dir.value)).padStart(3, '0') + '° ' + cardinal(dir.value) : 'VRB';
+                var d = dir ? String(Math.round(dir.value)).padStart(3, '0') + '° ' + cardinal(dir.value) : 'VRB';
                 out.wind = d + ' ' + kt + ' kt';
                 if (gust != null && Math.round(gust / 1.852) > kt) out.wind += ' G' + Math.round(gust / 1.852);
                 out.windSub = mph + ' mph' + (gust != null ? ', gust ' + Math.round(gust / 1.609344) + ' mph' : '');
@@ -463,8 +735,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         }
         var t = qv(p.temperature);
         if (t) {
-            var c = t.value, f = c * 9 / 5 + 32;
-            out.temp = Math.round(c) + ' °C / ' + Math.round(f) + ' °F';
+            out.temp = Math.round(t.value) + ' °C / ' + Math.round(t.value * 9 / 5 + 32) + ' °F';
             var dp = qv(p.dewpoint);
             if (dp) out.tempSub = 'dew point ' + Math.round(dp.value) + ' °C';
         }
@@ -473,17 +744,18 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var rh = qv(p.relativeHumidity); if (rh) parts.push('RH ' + Math.round(rh.value) + '%');
         var vis = qv(p.visibility); if (vis) parts.push('Vis ' + Math.round(vis.value / 1609.344 * 10) / 10 + ' mi');
         out.cond = parts.join(' · ');
-        var when = p.timestamp ? new Date(p.timestamp) : null;
-        var age = when ? Math.round((Date.now() - when.getTime()) / 60000) : null;
-        out.src = stationId + (when ? ' observed ' + localTime(when) + (age != null ? ' (' + age + ' min ago)' : '') : '');
-        out.age = age;
+        out.station = stationId;
+        out.observedAt = p.timestamp ? isoZ(new Date(p.timestamp)) : '';
+        out.source = 'nws';
         return out;
     }
-
-    function getWeather(lat, lng) {
-        // ~1 km precision is plenty for the nearest station and avoids sending exact test-site coordinates
-        var rl = Math.round(lat * 100) / 100, rg = Math.round(lng * 100) / 100;
-        chip('wx-status', 'loading…');
+    function getWeather(r) {
+        var loc = r.location;
+        if (!loc || loc.lat == null) return;
+        // ~1 km precision is plenty for the nearest station and avoids sending exact site coordinates
+        var rl = Math.round(loc.lat * 100) / 100, rg = Math.round(loc.lng * 100) / 100;
+        ui.wx = 'loading';
+        render();
         fetchJson('https://api.weather.gov/points/' + rl + ',' + rg)
             .then(function (pt) {
                 var url = pt && pt.properties && pt.properties.observationStations;
@@ -496,115 +768,791 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
                 if (!id || !/^[A-Z0-9]{3,6}$/.test(id)) throw new Error('no station');
                 return fetchJson('https://api.weather.gov/stations/' + id + '/observations/latest').then(function (o) { return { o: o, id: id }; });
             })
-            .then(function (r) {
-                var w = formatWx(r.o.properties || {}, r.id);
-                setText('wx-wind-v', w.wind || '—'); setText('wx-wind-sub', w.windSub);
-                setText('wx-temp-v', w.temp || '—'); setText('wx-temp-sub', w.tempSub);
-                setText('wx-cond-v', w.cond || '—'); setText('wx-src', w.src);
-                // only overwrite manual fields that are empty or still hold the previous auto value
-                [['wind', 'wind', w.wind], ['temp', 'temp', w.temp], ['cond', 'conditions', w.cond]].forEach(function (x) {
-                    var el = $('f-' + x[0]);
-                    if (!el.value || el.value === wxAuto[x[1]]) el.value = x[2];
-                    wxAuto[x[1]] = x[2];
-                });
-                chip('wx-status', w.age != null && w.age > 90 ? 'observation is old' : 'live', w.age != null && w.age > 90 ? 'bad' : 'ok');
-                saveDraft();
+            .then(function (res) {
+                if (cur() !== r) return;
+                var w = formatWx(res.o.properties || {}, res.id);
+                if (r.weather && r.weather.source === 'pilot') r.weather.auto = w; // keep the pilot's edit
+                else r.weather = w;
+                ui.wx = '';
+                touch(r);
+                render();
             })
             .catch(function () {
-                chip('wx-status', navigator.onLine ? 'unavailable (US only)' : 'offline', 'bad');
-                setText('wx-src', 'Enter it by hand under “Edit weather by hand.”');
+                ui.wx = navigator.onLine ? 'unavailable' : 'offline';
+                render();
             });
     }
 
-    // ---------- review & submit ----------
-    function valuesForForm(v) {
-        return {
-            date: v.date,
-            time: v.time + ' (' + utcOffset(new Date(v.date + 'T' + v.time)) + ')',
-            lat: v.lat, lng: v.lng, site: v.site, model: v.model, serial: v.serial,
-            batteries: v.batteries, observer: v.observer, card: v.card,
-            duration: v.duration, altitude: v.altitude, outcome: v.outcome,
-            wind: v.wind, temp: v.temp, conditions: v.cond, notes: v.notes
+    // =====================================================================
+    // Navigation
+    // =====================================================================
+    function go(view) {
+        ui.view = view;
+        var r = cur();
+        if (r && STEPS.indexOf(view) !== -1 && r.step !== view) { r.step = view; touch(r); }
+        render();
+        window.scrollTo(0, 0);
+    }
+    function editFromReview(step) {
+        var r = cur();
+        if (step === 'settings') { go('settings'); return; }
+        if (step === 'times') { go('review'); editTimes(); return; }
+        r.returnTo = 'review';
+        touch(r);
+        go(step);
+    }
+    function backToReview() { var r = cur(); r.returnTo = null; touch(r); go('review'); }
+    function fromReview() { var r = cur(); return !!(r && r.returnTo === 'review'); }
+
+    // =====================================================================
+    // Rendering
+    // =====================================================================
+    function render() {
+        clearInterval(ui.timer);
+        ui.timer = null;
+        var V = VIEWS[ui.view] || VIEWS.home;
+        var top = $('top'), view = $('view'), dock = $('dock');
+        top.textContent = ''; view.textContent = ''; dock.textContent = '';
+        V(top, view, dock);
+    }
+    function header(top, title, back, stepName) {
+        if (back) add(top, h('button', { class: 'icon-btn', id: 'btn-back', type: 'button', 'aria-label': 'Back', onclick: back }, '‹ Back'));
+        var idx = STEPS.indexOf(stepName);
+        add(top, h('div', { class: 'title' }, h('h1', { text: title }), idx !== -1 ? h('div', { class: 'step', text: 'Step ' + (idx + 1) + ' of ' + STEPS.length }) : null));
+    }
+    function brandHeader(top) {
+        var NS = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 32 32'); svg.setAttribute('aria-hidden', 'true');
+        [['rect', { width: 32, height: 32, rx: 8, fill: 'currentColor', opacity: '.08' }],
+         ['path', { d: 'M16 6v20M6 16h20', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round' }],
+         ['circle', { cx: 16, cy: 16, r: 5, fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }],
+         ['circle', { cx: 7, cy: 7, r: 3, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6 }],
+         ['circle', { cx: 25, cy: 7, r: 3, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6 }],
+         ['circle', { cx: 7, cy: 25, r: 3, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6 }],
+         ['circle', { cx: 25, cy: 25, r: 3, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6 }]].forEach(function (s) {
+            var el = document.createElementNS(NS, s[0]);
+            Object.keys(s[1]).forEach(function (k) { el.setAttribute(k, s[1][k]); });
+            svg.appendChild(el);
+        });
+        add(top, h('div', { class: 'brand' }, svg, h('span', { text: 'Flight Log' })));
+        add(top, h('button', { class: 'icon-btn', id: 'btn-settings', type: 'button', 'aria-label': 'Settings', onclick: function () { go('settings'); } }, 'Setup'));
+    }
+    function primary(dock, label, fn, opts) {
+        opts = opts || {};
+        if (opts.secondary) add(dock, h('button', { class: 'btn secondary', type: 'button', id: opts.secondaryId, onclick: opts.secondary.fn }, opts.secondary.label));
+        add(dock, h('button', { class: 'btn' + (opts.danger ? ' danger' : '') + (opts.big ? ' big' : ''), id: opts.id || 'btn-primary', type: 'button', onclick: fn }, label));
+    }
+    function pendingRecords() {
+        return Object.keys(flights).map(function (k) { return flights[k]; })
+            .filter(function (r) { return r.status === 'pending' || r.status === 'handoff'; })
+            .sort(function (a, b) { return a.createdAt < b.createdAt ? -1 : 1; });
+    }
+    function carryBanner(serial, onResolve) {
+        var c = carryFor(serial);
+        if (!c || c.resolvedAt) return null;
+        return h('div', { class: 'banner bad', id: 'carry-banner' },
+            h('strong', { text: 'Open items from the last flight of ' + serial + ': ' }), c.text,
+            h('div', { text: 'Resolve them under your maintenance procedure before flying. They stay open until you mark them resolved.' }),
+            h('button', { class: 'link-btn', type: 'button', id: 'btn-carry-resolved', onclick: function () {
+                sheet('Mark as resolved?', h('p', { text: 'Confirm the items were fixed or cleared under your maintenance procedure. The next log records that you marked them resolved.' }),
+                    [{ label: 'Yes, resolved', primary: true, fn: function () { c.resolvedAt = isoZ(new Date()); onResolve(c); saveAll(); render(); } }, { label: 'Cancel' }]);
+            } }, 'Mark resolved'));
+    }
+
+    var VIEWS = {};
+
+    // ---------- Screen 1: Home ----------
+    VIEWS.home = function (top, view, dock) {
+        brandHeader(top);
+        var r = cur(), a = selectedAircraft(), fs = formStatus();
+        if (!fs.ok) add(view, h('div', { class: 'banner warn', id: 'setup-banner' }, 'This phone isn’t connected to your form yet. Tap ', h('strong', { text: 'Setup' }), '.'));
+        if (a) add(view, carryBanner(a.serial, function (c) {
+            // record the resolution in the draft for this aircraft, or in the next flight created
+            var d = cur();
+            if (d && !d.startAt && d.aircraft && d.aircraft.serial === a.serial) {
+                d.carry = { serial: a.serial, text: c.text, from: c.at, resolvedAt: c.resolvedAt };
+                touch(d);
+                delete carry[a.serial];
+            }
+        }));
+
+        var pend = pendingRecords();
+        if (pend.length) {
+            add(view, panel('Waiting to submit', h('span', { class: 'chip bad', id: 'pending-count', text: pend.length + ' on phone' }),
+                h('div', { class: 'hint', text: 'Finalized logs not yet confirmed as submitted to the form.' }),
+                pend.map(function (p) {
+                    return h('div', { class: 'actions-row' },
+                        h('span', { class: 'hint', text: (p.aircraft ? p.aircraft.serial || p.aircraft.model : '?') + ' · ' + (p.startAt ? localDate(new Date(p.startAt)) + ' ' + localTime(new Date(p.startAt)) : '') }),
+                        h('button', { class: 'link-btn', type: 'button', onclick: function () { ui.handoffId = p.id; go('handoff'); } }, 'Submit now'));
+                })));
+        }
+
+        add(view, panel('Aircraft', h('button', { class: 'link-btn', type: 'button', id: 'btn-aircraft', onclick: function () { ui.aircraftReturn = 'home'; go('aircraft'); } }, a ? 'Change' : 'Add'),
+            a ? h('div', { class: 'readout wide' }, h('div', { class: 'k', text: a.model }), h('div', { class: 'v', id: 'home-aircraft', text: a.serial || '(no serial)' }))
+              : h('div', { class: 'hint warn', text: 'No aircraft selected. Add your aircraft so you don’t retype it each flight.' })));
+
+        if (r) {
+            var c = counts(r, 'pre', PRE);
+            add(view, panel('Unfinished flight', h('span', { class: 'chip', text: STEP_LABEL[r.step] || r.step }),
+                h('div', { class: 'hint', text: 'Created ' + localTime(new Date(r.createdAt)) + ' · ' + (r.aircraft ? r.aircraft.serial || r.aircraft.model : 'no aircraft') }),
+                h('div', { class: 'hint' + (c.issue ? ' bad' : ''), id: 'home-readiness', text: 'Preflight ' + (c.pass + c.na + c.issue) + '/' + PRE.length + ' checked' + (c.issue ? ' · ' + c.issue + ' issue' + (c.issue > 1 ? 's' : '') : '') + (r.startAt && !r.endAt ? ' · timer running' : '') }),
+                h('button', { class: 'link-btn left', type: 'button', id: 'btn-discard', onclick: function () {
+                    sheet('Discard this flight?', h('p', { text: 'Everything entered for this flight is deleted from the phone. It was never submitted.' }),
+                        [{ label: 'Keep it', primary: true }, { label: 'Discard flight', danger: true, fn: function () { delete flights[r.id]; currentId = null; saveAll(); render(); } }]);
+                } }, 'Discard flight')));
+            primary(dock, 'Resume Flight', function () { go(r.step); }, { id: 'btn-start', big: true });
+        } else {
+            add(view, panel('Readiness', null, h('div', { class: 'hint', id: 'home-readiness', text: 'Preflight not started. Start Flight opens a fresh checklist.' })));
+            primary(dock, 'Start Flight', function () { startNext(); }, { id: 'btn-start', big: true });
+        }
+    };
+
+    // ---------- Aircraft (uses the existing model list) ----------
+    VIEWS.aircraft = function (top, view, dock) {
+        var ret = function () { go(ui.aircraftReturn); };
+        header(top, 'Aircraft', ret);
+        var r = cur();
+        var applyToDraft = function (a) { if (r && !r.startAt && r.status === 'draft') { r.aircraft = { model: a.model, serial: a.serial }; touch(r); } };
+        add(view, panel('Your aircraft', null,
+            prefs.aircraft.length ? h('div', { class: 'opts', role: 'radiogroup', 'aria-label': 'Selected aircraft' }, prefs.aircraft.map(function (a) {
+                return h('div', { class: 'actions-row' },
+                    h('button', { class: 'opt', type: 'button', role: 'radio', 'aria-checked': String(prefs.selected === a.id), onclick: function () {
+                        prefs.selected = a.id; applyToDraft(a); saveAll(); render();
+                    } }, h('span', { class: 'dot' }), h('span', null, a.model + ' · ' + (a.serial || 'no serial'))),
+                    h('button', { class: 'link-btn', type: 'button', 'aria-label': 'Remove ' + (a.serial || a.model), onclick: function () {
+                        sheet('Remove ' + (a.serial || a.model) + '?', h('p', { text: 'Removes it from this phone’s list. Submitted logs are not affected.' }),
+                            [{ label: 'Keep', primary: true }, { label: 'Remove', danger: true, fn: function () {
+                                prefs.aircraft = prefs.aircraft.filter(function (x) { return x !== a; });
+                                if (prefs.selected === a.id) prefs.selected = prefs.aircraft[0] ? prefs.aircraft[0].id : null;
+                                saveAll(); render();
+                            } }]);
+                    } }, 'Remove'));
+            })) : h('div', { class: 'hint', text: 'None yet.' })));
+        var models = settings.models && settings.models.length ? settings.models : ['M1'];
+        var sel = h('select', { id: 'a-model' }, models.map(function (m) { return h('option', { value: m, text: m }); }));
+        var ser = h('input', { class: 'mono', id: 'a-serial', maxlength: 60, autocomplete: 'off', autocapitalize: 'characters' });
+        add(view, panel('Add aircraft', null, h('div', { class: 'row2' }, field('Model', sel, true), field('Airframe serial', ser)),
+            h('div', { class: 'hint', text: 'Models come from Setup.' }),
+            h('button', { class: 'link-btn left', type: 'button', id: 'btn-add-aircraft', onclick: function () {
+                var s = clean(ser.value).toUpperCase().slice(0, 60);
+                if (prefs.aircraft.some(function (x) { return x.model === sel.value && x.serial === s; })) { ser.focus(); return; }
+                var a = { id: uuid(), model: sel.value, serial: s };
+                prefs.aircraft.push(a);
+                prefs.selected = a.id;
+                applyToDraft(a);
+                saveAll(); render();
+            } }, '+ Add and select')));
+        primary(dock, 'Done', ret, { id: 'btn-aircraft-done' });
+    };
+
+    // ---------- Checklist row (shared by preflight and postflight inspection) ----------
+    function checkRow(r, key, d, hintNode) {
+        var it = item(r[key], d.id), sid = key + '-' + d.id;
+        var set = function (s) {
+            return function (e) {
+                e.stopPropagation();
+                setItem(r, key, d.id, item(r[key], d.id).s === s ? '' : s);
+                if (s === 'issue' && key === 'post' && r.post[d.id].s === 'issue' && !r.post[d.id].note) {
+                    // reuse what the pilot already wrote on the postflight screen
+                    var n = d.link.map(function (x) { return clean(r.issueNotes[x] || ''); }).filter(Boolean).join('; ');
+                    if (n) { r.post[d.id].note = n; touch(r); }
+                }
+                render();
+            };
         };
+        var icon = { pass: '✓', issue: '!', na: '–' }[it.s] || '';
+        var row = h('div', { class: 'ck', 'data-s': it.s || 'none', id: 'ck-' + sid },
+            h('div', { class: 'ck-top' },
+                h('button', { class: 'ck-main', type: 'button', 'aria-pressed': String(it.s === 'pass'), 'aria-label': d.label + ': ' + stLabel(it.s) + '. Tap to mark passed.', onclick: set('pass') },
+                    h('span', { class: 'ck-icon', 'aria-hidden': 'true', text: icon }),
+                    h('span', { class: 'ck-label' }, d.label, h('small', { text: stLabel(it.s) + (d.crit && key === 'pre' ? ' · critical' : '') + (it.s !== 'issue' && wasIssue(it) ? ' · issue fixed' : '') }))),
+                h('div', { class: 'ck-side' },
+                    h('button', { class: 'ck-btn', type: 'button', 'aria-pressed': String(it.s === 'issue'), 'aria-label': d.label + ': issue found', onclick: set('issue') }, 'Issue'),
+                    d.na ? h('button', { class: 'ck-btn', type: 'button', 'aria-pressed': String(it.s === 'na'), 'aria-label': d.label + ': not applicable', onclick: set('na') }, 'N/A') : null,
+                    d.help ? h('button', { class: 'ck-btn info', type: 'button', 'aria-expanded': String(!!ui.openHelp[sid]), 'aria-label': 'About ' + d.label, onclick: function () { ui.openHelp[sid] = !ui.openHelp[sid]; render(); } }, '?') : null)));
+        var more = [];
+        if (ui.openHelp[sid] && d.help) more.push(h('div', { class: 'hint', text: d.help }));
+        if (hintNode) more.push(hintNode);
+        if (it.s === 'issue') {
+            more.push(h('input', { 'aria-label': d.label + ' issue note', placeholder: 'What did you find? (optional)', maxlength: 200, value: it.note || '', autocomplete: 'off',
+                oninput: function () { r[key][d.id].note = clean(this.value); touch(r); } }));
+            if (d.crit && key === 'pre') more.push(h('div', { class: 'hint bad', text: 'Critical. Fix it and mark Pass, or follow your operating procedure. The issue stays on record.' }));
+        }
+        if (more.length) add(row, h('div', { class: 'ck-more' }, more));
+        return row;
     }
-    function buildUrl(base, vals) {
-        var url = base;
-        FIELDS.forEach(function (f) { url = url.split('__' + f.tok + '__').join(encodeURIComponent(vals[f.tok] || '')); });
-        return url;
+    function progressPanel(c, total, id) {
+        var done = c.pass + c.na + c.issue;
+        var bar = h('div');
+        bar.style.width = Math.round(done / total * 100) + '%';
+        return h('div', { class: 'panel', id: id },
+            h('div', { class: 'panel-head' }, h('h2', { text: done + ' of ' + total + ' checked' }),
+                h('span', { class: 'chip' + (c.issue ? ' bad' : done === total ? ' ok' : ''), text: c.issue ? c.issue + ' issue' + (c.issue > 1 ? 's' : '') : done === total ? 'complete' : (total - done) + ' to go' })),
+            h('div', { class: 'progress' }, bar),
+            h('div', { class: 'hint', text: 'Tap a row to mark it passed. Every result is your own inspection; the app doesn’t check the aircraft.' }));
     }
 
-    function review() {
-        var v = readForm(), errs = validate(v);
-        if (errs.length) { alert(errs.join('\n')); return; }
-        var p = parseFormUrl(settings.url || '');
-        if (p.error) { show('setup'); loadSetup(); return; }
-        var vals = valuesForForm(v), dl = $('review-list');
-        dl.textContent = '';
-        var missing = [];
-        FIELDS.forEach(function (f) {
-            if (!p.found[f.tok]) { if (vals[f.tok]) missing.push(f.label); return; }
-            if (!vals[f.tok]) return;
-            var dt = document.createElement('dt'); dt.textContent = f.label;
-            var dd = document.createElement('dd'); dd.textContent = vals[f.tok];
-            dl.appendChild(dt); dl.appendChild(dd);
+    // ---------- Screen 2: Preflight ----------
+    VIEWS.preflight = function (top, view, dock) {
+        var r = cur();
+        if (!r) { go('home'); return; }
+        syncCarry(r);
+        header(top, 'Preflight checklist', fromReview() ? backToReview : function () { go('home'); }, 'preflight');
+        if (r.carry && !r.carry.resolvedAt) {
+            add(view, (r.aircraft && carryBanner(r.aircraft.serial, function () { r.carry.resolvedAt = isoZ(new Date()); touch(r); delete carry[r.aircraft.serial]; })) ||
+                h('div', { class: 'banner bad' }, 'Open item from a previous flight: ' + r.carry.text));
+        }
+        var c = counts(r, 'pre', PRE);
+        add(view, progressPanel(c, PRE.length, 'pre-progress'));
+        var box = h('section', { class: 'panel' });
+        PRE.forEach(function (d) {
+            if (d.group) add(box, h('div', { class: 'group-h', text: d.group }));
+            add(box, checkRow(r, 'pre', d));
         });
-        var mb = $('review-missing');
-        mb.classList.toggle('hidden', !missing.length);
-        mb.textContent = missing.length ? 'Not on your form, so these won’t reach Excel: ' + missing.join(', ') + '.' : '';
-        $('btn-open').dataset.url = buildUrl(p.url, vals);
-        show('review');
-    }
+        add(view, box);
+        primary(dock, fromReview() ? 'Back to review' : 'Continue', function () {
+            var cc = counts(r, 'pre', PRE);
+            var next = function () { if (fromReview()) backToReview(); else go('flightsetup'); };
+            var afterCrit = function () {
+                if (!cc.none) { next(); return; }
+                var names = PRE.filter(function (d) { return !item(r.pre, d.id).s; }).map(function (d) { return d.label; });
+                sheet(cc.none + ' item' + (cc.none > 1 ? 's' : '') + ' not checked', h('ul', null, names.map(function (n) { return h('li', { text: n }); })),
+                    [{ label: 'Go back and check', primary: true }, { label: 'Continue – log as Not checked', fn: next }]);
+            };
+            if (cc.critIssue.length) {
+                sheet('Critical preflight issue', [
+                    h('ul', null, cc.critIssue.map(function (d) { var n = item(r.pre, d.id).note; return h('li', { text: d.label + (n ? ' – ' + n : '') }); })),
+                    h('p', { text: 'Resolve it and mark Pass, or follow your operating procedure. If you continue, the issue stays open in this log and is flagged at finalization.' })
+                ], [{ label: 'Go back and resolve', primary: true },
+                    { label: 'Continue – keep issue on record', danger: true, fn: function () { r.preAck = { at: isoZ(new Date()), items: cc.critIssue.map(function (d) { return d.id; }) }; touch(r); afterCrit(); } }]);
+                return;
+            }
+            afterCrit();
+        }, { id: 'btn-continue' });
+    };
 
-    // ---------- setup ----------
-    function renderTokens(found) {
-        var box = $('s-tokens'); box.textContent = '';
+    // ---------- Screen 3: Flight setup ----------
+    VIEWS.flightsetup = function (top, view, dock) {
+        var r = cur();
+        if (!r) { go('home'); return; }
+        syncCarry(r);
+        var editing = fromReview();
+        header(top, 'Flight setup', editing ? backToReview : function () { go('preflight'); }, 'flightsetup');
+
+        add(view, panel('Aircraft', h('button', { class: 'link-btn', type: 'button', id: 'btn-change-aircraft', disabled: !!r.startAt, onclick: function () { ui.aircraftReturn = 'flightsetup'; go('aircraft'); } }, r.aircraft ? 'Change' : 'Choose'),
+            r.aircraft ? h('div', { class: 'readout wide' }, h('div', { class: 'k', text: r.aircraft.model }), h('div', { class: 'v', id: 'setup-aircraft', text: r.aircraft.serial || '(no serial)' }))
+                : h('div', { class: 'hint bad', text: 'Choose an aircraft to continue.' }),
+            field('Battery IDs', h('input', { class: 'mono', id: 'f-batteries', maxlength: 120, autocomplete: 'off', autocapitalize: 'characters', placeholder: 'B12, B13', value: r.batteries,
+                oninput: function () { r.batteries = clean(this.value); touch(r); } })),
+            field('Visual observer', h('input', { id: 'f-observer', maxlength: 80, autocomplete: 'off', value: r.observer,
+                oninput: function () { r.observer = clean(this.value); prefs.observer = r.observer; touch(r); } }))));
+
+        add(view, panel('Mission', null,
+            h('div', { class: 'chips', role: 'radiogroup', 'aria-label': 'Mission type' }, MISSIONS.map(function (m) {
+                return h('button', { class: 'opt', type: 'button', role: 'radio', 'aria-checked': String(r.mission === m), onclick: function () { r.mission = m; prefs.mission = m; touch(r); render(); } }, h('span', { class: 'dot' }), m);
+            })),
+            field('Site', h('input', { id: 'f-site', maxlength: 120, autocomplete: 'off', placeholder: 'e.g. North field', value: r.site,
+                oninput: function () { r.site = clean(this.value); prefs.site = r.site; touch(r); } })),
+            field('Project / test card', h('input', { class: 'mono', id: 'f-card', maxlength: 60, autocomplete: 'off', autocapitalize: 'characters', value: r.card,
+                oninput: function () { r.card = clean(this.value); touch(r); } }))));
+
+        // Location: the phone's position, labelled as such
+        var loc = r.location;
+        var gpsChip = ui.gps === 'locating' ? 'locating…' : ui.gps === 'denied' ? 'permission denied' : ui.gps === 'unavailable' ? 'unavailable' : ui.gps === 'unsupported' ? 'not supported'
+            : !loc ? 'not captured' : loc.source === 'phone' ? '±' + Math.round(loc.acc) + ' m' : loc.source === 'manual' ? 'entered' : 'none';
+        var locBody = [];
+        if (loc && loc.source === 'phone') {
+            locBody.push(h('div', { class: 'readouts' },
+                h('div', { class: 'readout' }, h('div', { class: 'k', text: 'Latitude' }), h('div', { class: 'v', id: 'loc-lat', text: String(loc.lat) })),
+                h('div', { class: 'readout' }, h('div', { class: 'k', text: 'Longitude' }), h('div', { class: 'v', id: 'loc-lng', text: String(loc.lng) })),
+                h('div', { class: 'readout wide' }, h('div', { class: 'k', text: 'Accuracy' }), h('div', { class: 'v', text: '±' + Math.round(loc.acc) + ' m' }),
+                    h('div', { class: 'sub', text: 'Captured ' + localTime(new Date(loc.at)) + '. This is the phone’s position, not a verified takeoff point.' }))));
+            if (loc.acc > 100) locBody.push(h('div', { class: 'hint warn', text: 'Poor accuracy. Try again in the open, or enter the position by hand.' }));
+        } else if (loc && loc.source === 'none') {
+            locBody.push(h('div', { class: 'hint', id: 'loc-none', text: 'Location will be logged as not recorded.' }));
+        }
+        if (ui.gps === 'denied') locBody.push(h('div', { class: 'hint bad', text: 'Location is off for Safari. Turn it on in Settings › Privacy › Location Services › Safari Websites, or enter the position by hand.' }));
+        if (ui.gps === 'unavailable') locBody.push(h('div', { class: 'hint bad', text: 'The phone couldn’t get a position. Try again, or enter it by hand.' }));
+        if (ui.showManualLoc || (loc && loc.source === 'manual')) {
+            var manual = loc && loc.source === 'manual';
+            var latI = h('input', { class: 'mono', id: 'f-lat', inputmode: 'decimal', autocomplete: 'off', value: manual && loc.lat != null ? String(loc.lat) : '' });
+            var lngI = h('input', { class: 'mono', id: 'f-lng', inputmode: 'decimal', autocomplete: 'off', value: manual && loc.lng != null ? String(loc.lng) : '' });
+            var msg = h('div', { class: 'hint', id: 'loc-msg' });
+            var saveManual = function () {
+                if (latI.value === '' || lngI.value === '') return;
+                var la = Number(latI.value), ln = Number(lngI.value);
+                if (!isFinite(la) || !isFinite(ln) || la < -90 || la > 90 || ln < -180 || ln > 180) {
+                    msg.textContent = 'Latitude −90 to 90, longitude −180 to 180.'; msg.className = 'hint warn'; return;
+                }
+                msg.textContent = 'Saved as entered by you.'; msg.className = 'hint';
+                r.location = { lat: la, lng: ln, source: 'manual', at: isoZ(new Date()) };
+                touch(r);
+            };
+            latI.addEventListener('input', saveManual); lngI.addEventListener('input', saveManual);
+            locBody.push(h('div', { class: 'row2' }, field('Latitude', latI), field('Longitude', lngI)), msg);
+        }
+        locBody.push(h('div', { class: 'actions-row' },
+            h('button', { class: 'link-btn left', type: 'button', id: 'btn-gps', onclick: function () { ui.showManualLoc = false; getPosition(r); } }, loc && loc.source === 'phone' ? 'Get position again' : 'Use phone location'),
+            h('button', { class: 'link-btn', type: 'button', id: 'btn-manual-loc', onclick: function () { ui.showManualLoc = true; render(); } }, 'Enter by hand'),
+            h('button', { class: 'link-btn', type: 'button', id: 'btn-no-loc', onclick: function () { ui.showManualLoc = false; r.location = { source: 'none' }; touch(r); render(); } }, 'No location')));
+        add(view, panel('Phone location', h('span', { class: 'chip' + (loc && loc.source === 'phone' && loc.acc <= 50 ? ' ok' : ui.gps && ui.gps !== 'locating' ? ' bad' : ''), id: 'gps-status', text: gpsChip }), locBody));
+
+        // Weather (existing NWS observation lookup)
+        var w = r.weather;
+        var wxChip = ui.wx === 'loading' ? 'loading…' : ui.wx === 'offline' ? 'offline' : ui.wx === 'unavailable' ? 'unavailable (US only)'
+            : !w ? (loc && loc.lat != null ? 'not loaded' : 'needs location') : w.source === 'pilot' ? 'entered by you' : 'observed';
+        var ageMin = w && w.observedAt ? Math.round((Date.now() - new Date(w.observedAt)) / 60000) : null;
+        var wxBody = [h('div', { class: 'readouts' },
+            h('div', { class: 'readout' }, h('div', { class: 'k', text: 'Wind' }), h('div', { class: 'v', id: 'wx-wind-v', text: (w && w.wind) || '—' }), h('div', { class: 'sub', text: (w && w.windSub) || '' })),
+            h('div', { class: 'readout' }, h('div', { class: 'k', text: 'Temp' }), h('div', { class: 'v', id: 'wx-temp-v', text: (w && w.temp) || '—' }), h('div', { class: 'sub', text: (w && w.tempSub) || '' })),
+            h('div', { class: 'readout wide' }, h('div', { class: 'k', text: 'Conditions' }), h('div', { class: 'v', id: 'wx-cond-v', text: (w && w.cond) || '—' }),
+                h('div', { class: 'sub', id: 'wx-src', text: w && w.source === 'nws' ? 'NWS station ' + w.station + (w.observedAt ? ', observed ' + localTime(new Date(w.observedAt)) + ' (' + ageMin + ' min ago)' : '') : w && w.source === 'pilot' ? 'Entered by you' : 'Nearest National Weather Service station observation. Not a forecast.' })))];
+        if (ageMin != null && ageMin > 90 && w.source === 'nws') wxBody.push(h('div', { class: 'hint warn', text: 'This observation is over 90 minutes old.' }));
+        if (loc && loc.lat != null && ui.wx && ui.wx !== 'loading') wxBody.push(h('button', { class: 'link-btn left', type: 'button', id: 'btn-wx-retry', onclick: function () { getWeather(r); } }, 'Try weather again'));
+        var wIn = function (k, label, id, max) {
+            return field(label, h('input', { class: 'mono', id: id, maxlength: max, autocomplete: 'off', value: (w && w[k]) || '', oninput: function () {
+                var cw = r.weather;
+                if (!cw || cw.source !== 'pilot') r.weather = { source: 'pilot', wind: cw ? cw.wind : '', temp: cw ? cw.temp : '', cond: cw ? cw.cond : '', auto: cw && cw.source === 'nws' ? cw : null };
+                r.weather[k] = clean(this.value);
+                touch(r);
+            } }));
+        };
+        wxBody.push(h('details', { class: 'hint' }, h('summary', { text: 'Enter or correct weather by hand' }),
+            wIn('wind', 'Wind', 'f-wind', 80), wIn('temp', 'Temperature', 'f-temp', 40), wIn('cond', 'Conditions', 'f-cond', 160)));
+        wxBody.push(field('Your observations (optional)', h('textarea', { id: 'f-observed', maxlength: 300, rows: 2, placeholder: 'Gusts at the treeline, glare, birds, interference…', value: r.observed,
+            oninput: function () { r.observed = clean(this.value); touch(r); } })));
+        wxBody.push(h('div', { class: 'hint', text: 'For the log only. Use official aviation weather for go/no-go.' }));
+        add(view, panel('Weather', h('span', { class: 'chip' + (w && w.source === 'nws' && ageMin <= 90 ? ' ok' : ui.wx && ui.wx !== 'loading' ? ' bad' : ''), id: 'wx-status', text: wxChip }), wxBody));
+
+        add(view, h('div', { class: 'hint', text: 'Record created ' + localTime(new Date(r.createdAt)) + ' ' + utcOffset(new Date(r.createdAt)) + (r.tz ? ' (' + r.tz + ')' : '') + '. Flight ID ' + r.id.slice(0, 8) + '.' }));
+
+        if (editing) primary(dock, 'Back to review', backToReview, { id: 'btn-continue' });
+        else primary(dock, 'Start flight timer', function () {
+            if (!r.aircraft) { ui.aircraftReturn = 'flightsetup'; go('aircraft'); return; }
+            r.startAt = isoZ(new Date());
+            r.endAt = null;
+            touch(r);
+            go('active');
+        }, { id: 'btn-start-timer', big: true });
+
+        // first visit: capture location automatically (the permission prompt appears in context)
+        if (!editing && !r.startAt) {
+            if (!loc && !ui.gps) getPosition(r);
+            else if (loc && loc.lat != null && !w && !ui.wx) getWeather(r);
+        }
+    };
+
+    // ---------- Screen 4: Active flight ----------
+    VIEWS.active = function (top, view, dock) {
+        var r = cur();
+        if (!r) { go('home'); return; }
+        if (!r.startAt) { go('flightsetup'); return; }
+        if (r.endAt) { go('outcome'); return; }
+        header(top, 'Flight in progress', null, 'active');
+        var t = h('div', { class: 'timer', id: 'timer', role: 'timer', 'aria-live': 'off' });
+        var long = h('div', { class: 'banner warn hidden', id: 'long-banner' });
+        var tick = function () {
+            var ms = Date.now() - new Date(r.startAt);
+            t.textContent = fmtClock(ms);
+            var isLong = ms > LONG_FLIGHT_MIN * 60000;
+            long.classList.toggle('hidden', !isLong);
+            long.textContent = isLong ? 'The timer has run ' + fmtDur(ms) + '. If the flight already ended, tap End Flight and set the actual end time.' : '';
+        };
+        add(view, h('section', { class: 'panel' },
+            h('div', { class: 'rec' }, h('i', { 'aria-hidden': 'true' }), 'Flight timer running'),
+            t,
+            h('div', { class: 'hint', text: 'Started ' + localTime(new Date(r.startAt)) + ' (' + utcOffset(new Date(r.startAt)) + '). Elapsed time is calculated from the start time, so it stays correct if you leave the app.' })), long);
+        add(view, panel('Flight', null, h('dl', { class: 'review' },
+            h('dt', { text: 'Aircraft' }), h('dd', { text: r.aircraft ? r.aircraft.model + ' · ' + (r.aircraft.serial || '—') : '—' }),
+            h('dt', { text: 'Mission' }), h('dd', { text: r.mission || '—' }),
+            h('dt', { text: 'Site' }), h('dd', { text: r.site || '—' }))));
+        add(view, h('div', { class: 'hint', text: 'This is a logging timer only. It doesn’t connect to the aircraft or detect takeoff and landing.' }));
+        add(view, h('button', { class: 'link-btn left', type: 'button', id: 'btn-undo-start', onclick: function () {
+            sheet('Started by mistake?', h('p', { text: 'Clears the start time and returns to flight setup.' }),
+                [{ label: 'Keep timer running', primary: true }, { label: 'Clear start time', danger: true, fn: function () { r.startAt = null; touch(r); go('flightsetup'); } }]);
+        } }, 'Started by mistake?'));
+        tick();
+        ui.timer = setInterval(tick, 1000);
+        primary(dock, 'End Flight', function () {
+            var now = new Date(), ms = now - new Date(r.startAt);
+            var finish = function (endIso, corrected) {
+                r.endAt = endIso;
+                if (corrected) r.corrections.push({ field: 'End', from: isoZ(now), to: endIso, at: isoZ(new Date()) });
+                touch(r);
+                go('outcome');
+            };
+            if (ms <= LONG_FLIGHT_MIN * 60000) { finish(isoZ(now)); return; }
+            var inp = h('input', { type: 'datetime-local', id: 'f-actual-end', value: toLocalInput(isoZ(now)), min: toLocalInput(r.startAt), max: toLocalInput(isoZ(now)) });
+            var badEnd = function () { sheet('Check the end time', h('p', { text: 'The end time must be after ' + localTime(new Date(r.startAt)) + ' and not in the future.' }), [{ label: 'OK', primary: true }]); };
+            sheet('Confirm the end time', [h('p', { text: 'The timer shows ' + fmtDur(ms) + '. When did the flight actually end?' }), field('Actual end', inp)],
+                [{ label: 'It ended just now', primary: true, fn: function () { finish(isoZ(now)); } },
+                 { label: 'Use the time above', fn: function () {
+                     var v = fromLocalInput(inp.value);
+                     if (!v || v <= r.startAt || new Date(v) > now) { badEnd(); return; }
+                     finish(v, true);
+                 } }]);
+        }, { id: 'btn-end', danger: true, big: true });
+    };
+
+    // ---------- Screen 5: Postflight outcome ----------
+    VIEWS.outcome = function (top, view, dock) {
+        var r = cur();
+        if (!r) { go('home'); return; }
+        header(top, 'Postflight', fromReview() ? backToReview : null, 'outcome');
+        add(view, h('section', { class: 'panel' },
+            h('p', { class: 'big-q', id: 'q-outcome', text: 'How did the flight go?' }),
+            h('div', { class: 'opts', role: 'radiogroup', 'aria-labelledby': 'q-outcome' }, OUTCOMES.map(function (o) {
+                return h('button', { class: 'opt ' + (o.cls || ''), type: 'button', role: 'radio', 'aria-checked': String(r.outcome === o.id), 'data-id': o.id,
+                    onclick: function () { r.outcome = o.id; touch(r); render(); } }, h('span', { class: 'dot' }), o.label);
+            }))));
+
+        var issueBox = h('section', { class: 'panel' }, h('p', { class: 'big-q', id: 'q-issues', text: 'Did you observe any aircraft issues?' }),
+            h('div', { class: 'hint', text: 'Select all that apply.' }));
+        var opts = h('div', { class: 'opts', role: 'group', 'aria-labelledby': 'q-issues' });
+        ISSUES.forEach(function (d) {
+            var on = r.issues.indexOf(d.id) !== -1;
+            add(opts, h('button', { class: 'opt multi' + (d.excl ? '' : ' bad'), type: 'button', 'aria-pressed': String(on), 'data-id': d.id, onclick: function () {
+                if (on) r.issues = r.issues.filter(function (x) { return x !== d.id; });
+                else if (d.excl) r.issues = [d.id];
+                else r.issues = r.issues.filter(function (x) { return !byId(ISSUES, x).excl; }).concat([d.id]);
+                touch(r); render();
+            } }, h('span', { class: 'dot' }), d.label));
+            if (on && !d.excl) {
+                add(opts, h('input', { class: 'follow', id: 'issue-note-' + d.id, 'aria-label': d.label + ' details', maxlength: 200, autocomplete: 'off',
+                    placeholder: d.id === 'other' ? 'Describe the issue' : 'What happened? (optional)', value: r.issueNotes[d.id] || '',
+                    oninput: function () { r.issueNotes[d.id] = clean(this.value); touch(r); } }));
+            }
+        });
+        add(issueBox, opts);
+        if (r.issues.indexOf('unassessed') !== -1) add(issueBox, h('div', { class: 'hint warn', text: 'The aircraft will be logged as not yet assessed, not as undamaged.' }));
+        add(view, issueBox);
+
+        // Incident details: only for emergencies or suspected damage, kept separate from notes
+        if (r.outcome === 'emergency' || r.issues.indexOf('hard') !== -1) {
+            var harm = h('div', { class: 'chips', role: 'radiogroup', 'aria-label': 'Injury or third-party damage' }, [['no', 'No'], ['yes', 'Yes'], ['unknown', 'Unknown']].map(function (x) {
+                return h('button', { class: 'opt' + (x[0] === 'yes' ? ' bad' : ''), type: 'button', role: 'radio', 'aria-checked': String(r.incident.harm === x[0]), 'data-id': 'harm-' + x[0],
+                    onclick: function () { r.incident.harm = x[0]; touch(r); render(); } }, h('span', { class: 'dot' }), x[1]);
+            }));
+            add(view, panel('Incident report', null,
+                field('What happened?', h('textarea', { id: 'f-incident', maxlength: 600, rows: 3, value: r.incident.what, placeholder: 'Sequence of events, where it came down, actions taken',
+                    oninput: function () { r.incident.what = this.value; touch(r); } })),
+                h('label', { class: 'f' }, h('span', { text: 'Anyone injured, or damage to property other than the aircraft?' })), harm,
+                r.incident.harm === 'yes' ? h('div', { class: 'hint bad', text: 'Under FAA Part 107, serious injury or property damage over $500 (other than the aircraft) must be reported to the FAA within 10 days. Follow your organization’s procedure.' }) : null));
+        }
+
+        var altI = h('input', { class: 'mono', id: 'f-altitude', inputmode: 'numeric', maxlength: 4, autocomplete: 'off', value: r.altitude });
+        var altHint = h('div', { class: 'hint', id: 'alt-hint' });
+        var upd = function () {
+            var a = Number(altI.value);
+            if (!altI.value || !/^\d{1,4}$/.test(altI.value)) { altHint.textContent = altI.value ? 'Whole metres only.' : ''; altHint.className = 'hint'; return; }
+            altHint.textContent = '≈ ' + Math.round(a * 3.28084) + ' ft AGL' + (a > ALT_LIMIT_M ? '. Above 400 ft, so note the waiver or authorization.' : '');
+            altHint.className = 'hint' + (a > ALT_LIMIT_M ? ' warn' : '');
+        };
+        altI.addEventListener('input', function () { r.altitude = /^\d{1,4}$/.test(altI.value) ? altI.value : ''; touch(r); upd(); });
+        upd();
+        add(view, panel('Optional', null, field('Max altitude, your estimate (m AGL)', altI), altHint));
+
+        primary(dock, fromReview() ? 'Back to review' : 'Continue', function () {
+            if (!r.outcome) { sheet('How did the flight go?', h('p', { text: 'Pick one answer to continue.' }), [{ label: 'OK', primary: true }]); return; }
+            if (r.issues.indexOf('other') !== -1 && !clean(r.issueNotes.other || '')) { var o = $('issue-note-other'); if (o) o.focus(); return; }
+            if (fromReview()) backToReview(); else go('inspect');
+        }, { id: 'btn-continue' });
+    };
+
+    // ---------- Screen 6: Postflight inspection ----------
+    VIEWS.inspect = function (top, view, dock) {
+        var r = cur();
+        if (!r) { go('home'); return; }
+        header(top, 'Postflight inspection', fromReview() ? backToReview : function () { go('outcome'); }, 'inspect');
+        var c = counts(r, 'post', POST);
+        add(view, progressPanel(c, POST.length, 'post-progress'));
+        var box = h('section', { class: 'panel' });
+        POST.forEach(function (d) {
+            var linked = d.link.filter(function (x) { return r.issues.indexOf(x) !== -1; });
+            var hint = linked.length ? h('div', { class: 'hint warn', text: 'You reported: ' + linked.map(function (x) {
+                var n = clean(r.issueNotes[x] || ''); return byId(ISSUES, x).label + (n ? ' (“' + n + '”)' : '');
+            }).join('; ') }) : null;
+            add(box, checkRow(r, 'post', d, hint));
+        });
+        add(view, box);
+        if (c.issue) add(view, h('div', { class: 'banner warn', text: 'Document the condition and follow your maintenance procedure before the next flight. Open items carry over as a reminder.' }));
+        primary(dock, fromReview() ? 'Back to review' : 'Continue', function () { if (fromReview()) backToReview(); else go('review'); }, { id: 'btn-continue' });
+    };
+
+    // ---------- Screen 7: Review and notes ----------
+    function editTimes() {
+        var r = cur();
+        var s = h('input', { type: 'datetime-local', id: 'f-start', value: r.startAt ? toLocalInput(r.startAt) : '' });
+        var e = h('input', { type: 'datetime-local', id: 'f-end', value: r.endAt ? toLocalInput(r.endAt) : '' });
+        sheet('Correct flight times', [field('Start', s), field('End', e), h('p', { class: 'hint', text: 'The original times stay in the log as corrections.' })],
+            [{ label: 'Save times', primary: true, fn: function () {
+                var now = isoZ(new Date());
+                [['Start', 'startAt', s], ['End', 'endAt', e]].forEach(function (x) {
+                    var v = fromLocalInput(x[2].value);
+                    if (!v) return;
+                    if (r[x[1]] && toLocalInput(r[x[1]]) === x[2].value) return; // same minute: keep the tapped seconds
+                    r.corrections.push({ field: x[0], from: r[x[1]] || '(none)', to: v, at: now });
+                    r[x[1]] = v;
+                });
+                touch(r); render();
+            } }, { label: 'Cancel' }]);
+    }
+    function checklistReview(r, key, defs, id) {
+        return h('ul', { class: 'ck-list', id: id }, defs.map(function (d) {
+            var it = item(r[key], d.id), cls = it.s === 'pass' ? 'pass' : it.s === 'issue' ? 'issue' : it.s === 'na' ? '' : 'none';
+            return h('li', null, h('span', { class: 'st ' + cls, text: stLabel(it.s) }),
+                h('span', null, d.label,
+                    it.note && (it.s === 'issue' || wasIssue(it)) ? h('span', { class: 'hint', text: ' – ' + it.note }) : null,
+                    it.s !== 'issue' && wasIssue(it) ? tag('corrected', 'issue fixed') : null,
+                    key === 'pre' && changedAfterStart(r, it) ? tag('corrected', 'changed after start') : null));
+        }));
+    }
+    VIEWS.review = function (top, view, dock) {
+        var r = cur();
+        if (!r) { go('home'); return; }
+        header(top, 'Review', function () { go('inspect'); }, 'review');
+        var f = flags(r);
+        var editBtn = function (step, id) { return h('button', { class: 'link-btn', type: 'button', id: id, onclick: function () { editFromReview(step); } }, 'Edit'); };
+        var flagItems = function (list) { return h('ul', null, list.map(function (x) { return h('li', null, x.text, x.step ? h('button', { class: 'link-btn', type: 'button', onclick: function () { editFromReview(x.step); } }, 'Fix') : null); })); };
+
+        if (f.missing.length || f.block.length) add(view, h('div', { class: 'banner bad', id: 'flags-block' }, h('strong', { text: 'Needed before finalizing' }), flagItems(f.missing.concat(f.block))));
+        if (f.open.length) add(view, h('div', { class: 'banner bad', id: 'flags-open' }, h('strong', { text: 'Open items (stay on record)' }), h('ul', null, f.open.map(function (o) { return h('li', { text: o.text }); }))));
+        if (f.warn.length) add(view, h('div', { class: 'banner warn', id: 'flags-warn' }, h('strong', { text: 'Check' }), flagItems(f.warn)));
+
+        var dm = durMin(r), loc = r.location, w = r.weather;
+        var corrected = function (fld) { return r.corrections.some(function (c) { return c.field === fld; }) ? tag('corrected', 'corrected') : null; };
+        add(view, panel('Flight', editBtn('flightsetup', 'edit-setup'), h('dl', { class: 'review', id: 'review-flight' },
+            h('dt', { text: 'Aircraft' }), h('dd', null, r.aircraft ? r.aircraft.model + ' · ' + (r.aircraft.serial || '—') : tag('missing', 'missing')),
+            h('dt', { text: 'Mission' }), h('dd', null, r.mission || tag('missing', 'not set')),
+            h('dt', { text: 'Site' }), h('dd', null, r.site || '—', r.card ? ' · ' + r.card : ''),
+            r.batteries ? [h('dt', { text: 'Batteries' }), h('dd', { text: r.batteries })] : null,
+            r.observer ? [h('dt', { text: 'Observer' }), h('dd', { text: r.observer })] : null)));
+        add(view, panel('Time', h('button', { class: 'link-btn', type: 'button', id: 'edit-times', onclick: editTimes }, 'Correct'), h('dl', { class: 'review', id: 'review-time' },
+            h('dt', { text: 'Date' }), h('dd', { text: r.startAt ? localDate(new Date(r.startAt)) : '—' }),
+            h('dt', { text: 'Start' }), h('dd', null, r.startAt ? localTime(new Date(r.startAt)) + ' ' + utcOffset(new Date(r.startAt)) : tag('missing', 'missing'), r.startAt ? tag('captured', 'tapped') : null, corrected('Start')),
+            h('dt', { text: 'End' }), h('dd', null, r.endAt ? localTime(new Date(r.endAt)) + ' ' + utcOffset(new Date(r.endAt)) : tag('missing', 'missing'), r.endAt ? tag('captured', 'tapped') : null, corrected('End')),
+            h('dt', { text: 'Duration' }), h('dd', { id: 'review-duration' }, dm == null ? '—' : fmtDur(dm * 60000), dm != null ? tag('', 'calculated') : null))));
+        add(view, panel('Location & weather', editBtn('flightsetup', 'edit-loc'), h('dl', { class: 'review', id: 'review-loc' },
+            h('dt', { text: 'Position' }), h('dd', null,
+                !loc || loc.source === 'none' ? tag('missing', 'not recorded') : [loc.lat + ', ' + loc.lng,
+                    loc.source === 'phone' ? [' ±' + Math.round(loc.acc) + ' m', tag('captured', 'phone GPS')] : tag('', 'entered')]),
+            h('dt', { text: 'Wind' }), h('dd', null, (w && w.wind) || tag('missing', 'unavailable')),
+            h('dt', { text: 'Temp' }), h('dd', null, (w && w.temp) || tag('missing', 'unavailable')),
+            h('dt', { text: 'Conditions' }), h('dd', null, (w && w.cond) || '—'),
+            h('dt', { text: 'Source' }), h('dd', null, !w ? tag('missing', 'unavailable') : w.source === 'nws' ? ['NWS ' + w.station + (w.observedAt ? ' at ' + localTime(new Date(w.observedAt)) : ''), tag('captured', 'observed')] : tag('', 'entered by you')),
+            r.observed ? [h('dt', { text: 'Observed' }), h('dd', { text: r.observed })] : null)));
+        var pc = counts(r, 'pre', PRE);
+        add(view, panel('Preflight · ' + pc.pass + ' pass, ' + pc.issue + ' issue, ' + pc.na + ' N/A, ' + pc.none + ' unchecked', editBtn('preflight', 'edit-pre'), checklistReview(r, 'pre', PRE, 'review-pre')));
+        add(view, panel('Postflight', editBtn('outcome', 'edit-outcome'), h('dl', { class: 'review', id: 'review-outcome' },
+            h('dt', { text: 'Outcome' }), h('dd', null, (byId(OUTCOMES, r.outcome) || {}).label || tag('missing', 'missing')),
+            h('dt', { text: 'Issues' }), h('dd', { text: issueText(r) }),
+            r.incident.what || r.incident.harm ? [h('dt', { text: 'Incident' }), h('dd', { text: valuesForForm(r).incident })] : null,
+            h('dt', { text: 'Max alt' }), h('dd', null, r.altitude ? [r.altitude + ' m AGL', tag('estimated', 'estimate')] : '—'))));
+        add(view, panel('Inspection', editBtn('inspect', 'edit-inspect'), checklistReview(r, 'post', POST, 'review-post')));
+        add(view, panel('Flight notes', null, h('textarea', { id: 'f-notes', 'aria-label': 'Flight notes', maxlength: 1000, rows: 4, value: r.notes,
+            placeholder: 'Record anything worth remembering about this flight, including mission results, unusual behavior, environmental conditions, or lessons learned.',
+            oninput: function () { r.notes = this.value; touch(r); } })));
+
+        var fs = formStatus();
+        if (fs.p && !fs.p.error) {
+            var vals = valuesForForm(r);
+            var notOnForm = FIELDS.filter(function (x) { return !fs.p.found[x.tok] && vals[x.tok]; }).map(function (x) { return x.label; });
+            if (notOnForm.length) add(view, h('div', { class: 'banner warn', id: 'review-missing', text: 'Not on your form, so these won’t reach Excel: ' + notOnForm.join(', ') + '. Add them in Setup.' }));
+        }
+        primary(dock, 'Finalize Flight Log', finalize, { id: 'btn-finalize', big: true });
+    };
+
+    // ---------- Screen 8: Finalization ----------
+    function finalize() {
+        var r = cur();
+        r.notes = clean(r.notes);
+        touch(r); // draft saved before anything else
+        var f = flags(r);
+        if (f.missing.length || f.block.length) {
+            sheet('Can’t finalize yet', h('ul', null, f.missing.concat(f.block).map(function (x) { return h('li', { text: x.text }); })), [{ label: 'OK', primary: true }]);
+            return;
+        }
+        var crit = f.open.filter(function (o) { return o.crit; });
+        if (crit.length) {
+            sheet('This log has open safety items', [
+                h('ul', null, crit.map(function (o) { return h('li', { text: o.text }); })),
+                h('p', { text: 'Ground the aircraft until each item is resolved under your maintenance procedure or operating rules. They will be shown again before the next flight.' }),
+                r.incident.harm === 'yes' ? h('p', { text: 'Serious injury or property damage over $500 must be reported to the FAA within 10 days (Part 107).' }) : null
+            ], [{ label: 'Finalize with open items', primary: true, fn: function () { handoff(r); } }, { label: 'Go back' }]);
+            return;
+        }
+        handoff(r);
+    }
+    function handoff(r) {
+        if (!formStatus().ok) { go('settings'); return; }
+        r.finalizedAt = r.finalizedAt || isoZ(new Date());
+        r.returnTo = null;
+        if (currentId === r.id) currentId = null; // the workflow is done; the record waits for submission
+        ui.handoffId = r.id;
+        if (!navigator.onLine) { r.status = 'pending'; touch(r); go('handoff'); return; }
+        openForm(r);
+    }
+    function openForm(r) {
+        var url = buildUrl(formStatus().p.url, valuesForForm(r));
+        r.status = 'handoff';
+        r.handoffAt = isoZ(new Date());
+        r.attempts = (r.attempts || 0) + 1;
+        ui.handoffId = r.id;
+        touch(r);
+        ui.view = 'handoff';
+        render();
+        location.href = url;
+    }
+    function confirmSubmitted(r) {
+        var open = openItems(r);
+        var serial = r.aircraft && r.aircraft.serial;
+        if (serial) {
+            var unresolved = open.filter(function (o) { return !o.carried; });
+            if (r.carry && !r.carry.resolvedAt) unresolved.unshift({ text: r.carry.text });
+            if (unresolved.length) carry[serial] = { text: unresolved.map(function (o) { return o.text; }).join('; '), at: r.endAt || r.finalizedAt, flightId: r.id };
+        }
+        ui.lastDone = { aircraft: r.aircraft, duration: durMin(r), outcome: (byId(OUTCOMES, r.outcome) || {}).label, open: open.length, id: r.id };
+        delete flights[r.id]; // submitted: nothing from this flight is kept on the phone
+        if (currentId === r.id) currentId = null;
+        ui.handoffId = null;
+        saveAll();
+        go('done');
+    }
+    VIEWS.handoff = function (top, view, dock) {
+        var r = flights[ui.handoffId];
+        if (!r) { go('home'); return; }
+        header(top, 'Submit to form', null);
+        var summary = (r.aircraft ? r.aircraft.serial || r.aircraft.model : '') + ' · ' + (r.startAt ? localDate(new Date(r.startAt)) + ' ' + localTime(new Date(r.startAt)) : '') + ' · Flight ID ' + r.id.slice(0, 8);
+        if (r.status === 'pending') {
+            add(view, h('div', { class: 'banner warn', id: 'pending-banner' }, h('strong', { text: 'Saved on this phone, not submitted yet.' }),
+                h('div', { text: navigator.onLine ? 'Open the form to submit it.' : 'No signal, so the form can’t open. Submit it when you’re back online; it waits on the Home screen.' })));
+            add(view, h('div', { class: 'hint', text: summary }));
+            add(view, h('button', { class: 'link-btn left', type: 'button', id: 'btn-next-pending', onclick: startNext }, 'Start next flight'));
+            primary(dock, 'Open form', function () {
+                if (!navigator.onLine) { sheet('Still offline', h('p', { text: 'The phone has no connection. The log stays saved here.' }), [{ label: 'OK', primary: true }]); return; }
+                openForm(r);
+            }, { id: 'btn-open', secondary: { label: 'Home', fn: function () { go('home'); } }, secondaryId: 'btn-home' });
+            return;
+        }
+        add(view, h('section', { class: 'panel' },
+            h('p', { class: 'big-q', text: 'Did Microsoft Forms say your response was submitted?' }),
+            h('div', { class: 'hint', text: 'This app can’t see the form, so only you can confirm it. ' + summary })));
+        add(view, h('div', { class: 'hint', text: 'Not sure? Open the form again and check. If it goes in twice, both rows share the same Flight ID in Excel, so the duplicate is easy to remove.' }));
+        add(view, h('div', { class: 'actions-row' },
+            h('button', { class: 'link-btn left', type: 'button', id: 'btn-reopen', onclick: function () { openForm(r); } }, 'Open the form again'),
+            h('button', { class: 'link-btn left', type: 'button', id: 'btn-keep', onclick: function () { r.status = 'pending'; touch(r); render(); } }, 'Form didn’t load – keep for later'),
+            h('button', { class: 'link-btn left', type: 'button', id: 'btn-back-review', onclick: function () {
+                if (cur() && cur() !== r) { sheet('Finish the current flight first', h('p', { text: 'Another flight is in progress. Finish or discard it, then change this one.' }), [{ label: 'OK', primary: true }]); return; }
+                r.status = 'draft'; r.step = 'review'; currentId = r.id; ui.handoffId = null; touch(r); go('review');
+            } }, 'Change something')));
+        primary(dock, 'Yes, it was submitted', function () { confirmSubmitted(r); }, { id: 'btn-submitted', big: true });
+    };
+
+    // ---------- Screen 9: Done / repeated flights ----------
+    function startNext() {
+        // stable preferences live in prefs; everything flight-specific starts fresh
+        ui.gps = ''; ui.wx = ''; ui.showManualLoc = false; ui.openHelp = {}; ui.handoffId = null; ui.lastDone = null;
+        if (cur()) { go(cur().step); return; }
+        newRecord();
+        go('preflight');
+    }
+    VIEWS.done = function (top, view, dock) {
+        var d = ui.lastDone;
+        if (!d) { go('home'); return; }
+        header(top, 'Flight logged', null);
+        add(view, h('div', { class: 'banner ok', id: 'done-banner' }, h('strong', { text: 'Submitted to your form.' }), h('div', { text: 'Nothing from this flight is kept on the phone.' })));
+        add(view, panel('Summary', null, h('dl', { class: 'review' },
+            h('dt', { text: 'Aircraft' }), h('dd', { text: d.aircraft ? d.aircraft.model + ' · ' + (d.aircraft.serial || '—') : '—' }),
+            h('dt', { text: 'Duration' }), h('dd', { text: d.duration == null ? '—' : fmtDur(d.duration * 60000) }),
+            h('dt', { text: 'Outcome' }), h('dd', { text: d.outcome || '—' }),
+            h('dt', { text: 'Flight ID' }), h('dd', { text: d.id }))));
+        if (d.open) add(view, h('div', { class: 'banner warn', text: 'This log has open items. They’ll be shown before the next flight of this aircraft until you mark them resolved.' }));
+        primary(dock, 'Start Next Flight', startNext, { id: 'btn-next', big: true, secondary: { label: 'Home', fn: function () { ui.lastDone = null; go('home'); } }, secondaryId: 'btn-home' });
+    };
+
+    // ---------- Settings (existing Setup screen) ----------
+    function renderTokens(box, found) {
+        box.textContent = '';
         FIELDS.forEach(function (f) {
-            var s = document.createElement('span');
-            s.className = 'tok ' + (found && found[f.tok] ? 'found' : 'missing') + (f.req ? ' req' : '');
-            s.textContent = '__' + f.tok + '__';
-            s.title = f.label + (f.req ? ' (required)' : '');
-            box.appendChild(s);
+            add(box, h('span', { class: 'tok ' + (found && found[f.tok] ? 'found' : 'missing') + (f.req ? ' req' : f.rec ? ' rec' : ''),
+                title: f.label + (f.req ? ' (required)' : f.rec ? ' (recommended)' : ''), text: '__' + f.tok + '__' }));
         });
     }
-    function checkSetupUrl() {
-        var raw = $('s-url').value, msg = $('s-url-msg');
-        if (!raw.trim()) { msg.textContent = 'Codes in red are required. Green means found in your link.'; msg.className = 'hint'; renderTokens(null); return null; }
+    function checkSetupUrl(raw, msg, box) {
+        if (!raw.trim()) { msg.textContent = 'Red codes are required, amber recommended. Green means found in your link.'; msg.className = 'hint'; renderTokens(box, null); return null; }
         var p = parseFormUrl(raw);
-        if (p.error) { msg.textContent = p.error; msg.className = 'hint warn'; renderTokens(null); return null; }
+        if (p.error) { msg.textContent = p.error; msg.className = 'hint warn'; renderTokens(box, null); return null; }
         var miss = FIELDS.filter(function (f) { return f.req && !p.found[f.tok]; }).map(function (f) { return '__' + f.tok + '__'; });
         var none = FIELDS.every(function (f) { return !p.found[f.tok]; });
+        var recMiss = FIELDS.filter(function (f) { return f.rec && !p.found[f.tok]; }).length;
         msg.textContent = none
-            ? 'This is the form\u2019s normal share link. In Forms, use \u22ef \u2192 Get pre-filled URL, type each code below into its question, then copy that link.'
-            : miss.length ? 'Missing required codes: ' + miss.join(' ') : 'All required codes found.';
-        msg.className = 'hint' + (miss.length ? ' warn' : '');
-        renderTokens(p.found);
+            ? 'This is the form’s normal share link. In Forms, use ⋯ → Get pre-filled URL, type each code below into its question, then copy that link.'
+            : miss.length ? 'Missing required codes: ' + miss.join(' ')
+            : 'All required codes found.' + (recMiss ? ' ' + recMiss + ' recommended code' + (recMiss > 1 ? 's' : '') + ' missing.' : '');
+        msg.className = 'hint' + (miss.length || none ? ' warn' : '');
+        renderTokens(box, p.found);
         return miss.length ? null : p;
-    }
-    function loadSetup() {
-        $('s-url').value = settings.url || '';
-        $('s-models').value = (settings.models || []).join(', ');
-        setText('share-msg', '');
-        checkSetupUrl();
     }
     function parseModels(s) {
         return clean(s).split(',').map(clean).filter(Boolean).slice(0, 20).map(function (m) { return m.slice(0, 40); });
     }
-    function saveSetup() {
-        var p = checkSetupUrl();
-        if (!p) {
-            var why = $('s-url-msg').textContent;
-            alert('Can\u2019t save yet.\n\n' + (/^Codes in red/.test(why) ? 'Paste your pre-filled form link first.' : why));
-            $('s-url').focus();
-            return;
-        }
-        settings = { url: p.url, models: parseModels($('s-models').value).length ? parseModels($('s-models').value) : ['M1'] };
-        store.set(SETTINGS_KEY, settings);
-        renderModels();
-        $('setup-banner').classList.add('hidden');
-        show('log');
-    }
     function b64urlEncode(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
     function b64urlDecode(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return decodeURIComponent(escape(atob(s))); }
+
+    VIEWS.settings = function (top, view, dock) {
+        var leave = function () { go('home'); };
+        header(top, 'Setup', leave);
+        var url = h('textarea', { id: 's-url', class: 'mono', rows: 4, autocomplete: 'off', spellcheck: 'false', autocapitalize: 'off', placeholder: 'https://forms.office.com/Pages/ResponsePage.aspx?id=…', value: settings.url || '' });
+        var msg = h('div', { class: 'hint', id: 's-url-msg' });
+        var toks = h('div', { class: 'tokens', id: 's-tokens' });
+        var models = h('input', { id: 's-models', autocomplete: 'off', placeholder: 'M1', value: (settings.models || []).join(', ') });
+        url.addEventListener('input', function () { checkSetupUrl(url.value, msg, toks); });
+        add(view, panel('Connect your form', null,
+            h('ol', { class: 'steps' },
+                h('li', null, 'In Microsoft Forms, add one ', h('strong', { text: 'Text' }), ' question per field (no number or date restrictions).'),
+                h('li', null, 'Click ', h('strong', { text: '⋯ → Get pre-filled URL' }), '. In each question, type its code from the list below, for example ', h('code', { text: '__flightid__' }), '.'),
+                h('li', { text: 'Copy the link and paste it here.' })),
+            field('Pre-filled form link', url), msg, toks,
+            field('Aircraft models (comma-separated)', models)));
+        checkSetupUrl(url.value, msg, toks);
+        var shareMsg = h('div', { class: 'hint', id: 'share-msg' });
+        add(view, panel('Share with other pilots', null,
+            h('div', { class: 'hint', text: 'This makes a link that sets up another phone with the same form. Send it only through company channels.' }),
+            h('button', { class: 'link-btn left', type: 'button', id: 'btn-share', onclick: function () {
+                var p = parseFormUrl(settings.url || '');
+                if (p.error) { shareMsg.textContent = 'Save a valid form link first.'; return; }
+                var link = location.origin + location.pathname + '#setup=' + b64urlEncode(JSON.stringify({ url: settings.url, models: settings.models }));
+                var done = function () { shareMsg.textContent = 'Copied.'; };
+                if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done, function () { prompt('Copy this link:', link); });
+                else prompt('Copy this link:', link);
+            } }, 'Copy setup link'), shareMsg));
+        add(view, panel('On this phone', null,
+            h('div', { class: 'hint', text: 'Settings, aircraft and unfinished flights are kept only in this browser until submitted. The weather lookup sends your position rounded to about 1 km. Nothing else leaves the phone until you submit the form.' }),
+            h('button', { class: 'link-btn left', type: 'button', id: 'btn-wipe', onclick: function () {
+                var n = Object.keys(flights).length;
+                sheet('Clear everything on this phone?', h('p', { text: 'Removes the form link, aircraft list, preferences' + (n ? ' and ' + n + ' unsubmitted flight' + (n > 1 ? 's, which will be lost' : ', which will be lost') : '') + '.' }),
+                    [{ label: 'Cancel', primary: true }, { label: 'Clear everything', danger: true, fn: function () {
+                        [K.settings, K.prefs, K.flights, K.current, K.carry].forEach(store.del);
+                        settings = { url: '', models: ['M1'] }; prefs = { aircraft: [], selected: null, mission: '', site: '', observer: '' };
+                        flights = {}; carry = {}; currentId = null;
+                        render();
+                    } }]);
+            } }, 'Clear settings and data'),
+            h('div', { class: 'hint' }, 'Build ', h('code', { text: BUILD }))));
+        primary(dock, 'Save', function () {
+            var p = checkSetupUrl(url.value, msg, toks);
+            if (!p) {
+                var why = msg.textContent;
+                sheet('Can’t save yet', h('p', { text: /^Red codes/.test(why) ? 'Paste your pre-filled form link first.' : why }), [{ label: 'OK', primary: true, fn: function () { url.focus(); } }]);
+                return;
+            }
+            var ms = parseModels(models.value);
+            settings = { url: p.url, models: ms.length ? ms : ['M1'] };
+            store.set(K.settings, settings);
+            go('home');
+        }, { id: 'btn-setup-save', secondary: { label: 'Back', fn: leave }, secondaryId: 'btn-setup-cancel' });
+    };
 
     // Setup arrives in the #fragment, which browsers never send to the web server.
     function importFromHash() {
@@ -618,67 +1566,31 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             var models = Array.isArray(s.models) ? parseModels(s.models.join(',')) : ['M1'];
             if (!confirm('Connect this phone to the form at ' + new URL(p.url).hostname + '?\nModels: ' + models.join(', '))) return;
             settings = { url: p.url, models: models.length ? models : ['M1'] };
-            store.set(SETTINGS_KEY, settings);
+            store.set(K.settings, settings);
         } catch (e) { alert('That setup link is damaged.'); }
     }
 
-    // ---------- wire up ----------
-    $('btn-now').addEventListener('click', function () { fillNow(); saveDraft(); });
-    $('btn-gps').addEventListener('click', getPosition);
-    $('btn-review').addEventListener('click', review);
-    $('btn-back').addEventListener('click', function () { show('log'); });
-    $('btn-open').addEventListener('click', function () {
-        var url = this.dataset.url;
-        if (!url) return;
-        store.del(DRAFT_KEY); // the form now holds the entry
-        location.href = url;
+    // =====================================================================
+    // Start
+    // =====================================================================
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible' && (ui.view === 'active' || ui.view === 'handoff')) render();
     });
-    $('btn-clear').addEventListener('click', function () {
-        if (!confirm('Clear this entry?')) return;
-        store.del(DRAFT_KEY);
-        IDS.forEach(function (k) { if (k !== 'model') $('f-' + k).value = ''; });
-        document.querySelectorAll('input[name=outcome]').forEach(function (r) { r.checked = false; });
-        $('draft-banner').classList.add('hidden');
-        fillNow(); altHint(); getPosition();
-    });
-    $('btn-settings').addEventListener('click', function () { loadSetup(); show('setup'); });
-    $('btn-setup-cancel').addEventListener('click', function () { show('log'); });
-    $('btn-setup-save').addEventListener('click', saveSetup);
-    $('s-url').addEventListener('input', checkSetupUrl);
-    $('btn-share').addEventListener('click', function () {
-        var p = parseFormUrl(settings.url || '');
-        if (p.error) { setText('share-msg', 'Save a valid form link first.'); return; }
-        var link = location.origin + location.pathname + '#setup=' + b64urlEncode(JSON.stringify({ url: settings.url, models: settings.models }));
-        var done = function () { setText('share-msg', 'Copied.'); };
-        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done, function () { prompt('Copy this link:', link); });
-        else prompt('Copy this link:', link);
-    });
-    $('btn-wipe').addEventListener('click', function () {
-        if (!confirm('Remove the form link and any draft from this phone?')) return;
-        store.del(SETTINGS_KEY); store.del(DRAFT_KEY);
-        settings = { url: '', models: ['M1'] };
-        loadSetup(); renderModels();
-    });
-    $('f-altitude').addEventListener('input', altHint);
-    document.addEventListener('input', function (e) { if (views.log.contains(e.target)) saveDraft(); });
-    document.addEventListener('change', function (e) { if (views.log.contains(e.target)) saveDraft(); });
+    window.addEventListener('pageshow', function (e) { if (e.persisted) render(); });
+    window.addEventListener('online', function () { if (ui.view === 'handoff' || ui.view === 'home') render(); });
 
-    // ---------- start ----------
     importFromHash();
-    renderModels();
-    var draft = store.get(DRAFT_KEY);
-    if (draft && (draft.serial || draft.card || draft.notes || draft.duration)) {
-        writeForm(draft);
-        $('draft-banner').classList.remove('hidden');
-        updateTz();
-        if (draft.lat && draft.lng) getWeather(Number(draft.lat), Number(draft.lng));
-        else getPosition();
-    } else {
-        fillNow();
-        getPosition();
+    migrateOldDraft();
+    if (currentId && !flights[currentId]) currentId = null;
+    var inHandoff = Object.keys(flights).map(function (k) { return flights[k]; }).filter(function (r) { return r.status === 'handoff'; })
+        .sort(function (a, b) { return a.handoffAt < b.handoffAt ? 1 : -1; })[0];
+    if (inHandoff) { ui.handoffId = inHandoff.id; ui.view = 'handoff'; }
+    else if (cur() && cur().step) ui.view = cur().step; // resume where the pilot left off
+    render();
+
+    if ('serviceWorker' in navigator && window.isSecureContext) {
+        navigator.serviceWorker.register('sw.js').catch(function () { /* offline start unavailable */ });
     }
-    altHint();
-    if (parseFormUrl(settings.url || '').error) $('setup-banner').classList.remove('hidden');
 })();
 </script>
 </body>
