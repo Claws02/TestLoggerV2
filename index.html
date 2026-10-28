@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-NbEYUDF36qnkF9k23RJxEUJ7zmurp2xTfJehyrK0d9E='; style-src 'sha256-z7r2deiWSmF/BFu7zTjCfq7TW+HANl+rq/LHtsrD/vw='; font-src data:; img-src data:; connect-src https://api.weather.gov; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6VKbajsCvBAOAXhBe+7x1Zi2KAASW+jbfwl2veSH44A='; style-src 'sha256-z7r2deiWSmF/BFu7zTjCfq7TW+HANl+rq/LHtsrD/vw='; font-src data:; img-src data:; connect-src https://api.weather.gov; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -282,7 +282,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
 (function () {
     // ---------- config ----------
     // Hosts a pre-filled link may point at. Prevents a tampered setup link from sending entries elsewhere.
-    var FORM_HOSTS = ['forms.office.com', 'forms.office365.us', 'forms.microsoft.com', 'forms.cloud.microsoft'];
+    var FORM_HOSTS = ['forms.office.com', 'forms.office365.us', 'forms.osi.office365.us', 'forms.microsoft.com', 'forms.cloud.microsoft'];
     var FIELDS = [
         { tok: 'date', label: 'Date', req: true },
         { tok: 'time', label: 'Time', req: true },
@@ -572,7 +572,10 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var p = parseFormUrl(raw);
         if (p.error) { msg.textContent = p.error; msg.className = 'hint warn'; renderTokens(null); return null; }
         var miss = FIELDS.filter(function (f) { return f.req && !p.found[f.tok]; }).map(function (f) { return '__' + f.tok + '__'; });
-        msg.textContent = miss.length ? 'Missing required codes: ' + miss.join(' ') : 'All required codes found.';
+        var none = FIELDS.every(function (f) { return !p.found[f.tok]; });
+        msg.textContent = none
+            ? 'This is the form\u2019s normal share link. In Forms, use \u22ef \u2192 Get pre-filled URL, type each code below into its question, then copy that link.'
+            : miss.length ? 'Missing required codes: ' + miss.join(' ') : 'All required codes found.';
         msg.className = 'hint' + (miss.length ? ' warn' : '');
         renderTokens(p.found);
         return miss.length ? null : p;
@@ -588,7 +591,12 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     }
     function saveSetup() {
         var p = checkSetupUrl();
-        if (!p) return;
+        if (!p) {
+            var why = $('s-url-msg').textContent;
+            alert('Can\u2019t save yet.\n\n' + (/^Codes in red/.test(why) ? 'Paste your pre-filled form link first.' : why));
+            $('s-url').focus();
+            return;
+        }
         settings = { url: p.url, models: parseModels($('s-models').value).length ? parseModels($('s-models').value) : ['M1'] };
         store.set(SETTINGS_KEY, settings);
         renderModels();
