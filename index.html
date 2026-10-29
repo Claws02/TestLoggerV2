@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-GM+O555Qs7AavT83vdAdmbKN36FQoKgBkiTB9awEJMw='; style-src 'sha256-KC9TM7HqQPUukWFDJNJDQthgenFgvWZCRFXUXYGyoNE='; font-src data:; img-src data:; connect-src https://api.weather.gov; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-KuzXe8q450E8yZq8h6jEyI/BxOxDmn8h8pXmgvpNn54='; style-src 'sha256-f8fzDG3Hnw0NeJeHGKHeZg/gjcZB7t01s/vmcCB4PaA='; font-src data:; img-src data:; connect-src https://api.weather.gov; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -213,6 +213,7 @@ dl.review dd { margin: 0; font-family: 'Plex Mono', ui-monospace, monospace; ove
 .btn.secondary { background: var(--panel); color: var(--ink); border: 1px solid var(--line); flex: 0 0 auto; padding: 0 18px; }
 .btn.danger { background: var(--bad); color: #fff; }
 .btn.big { min-height: 64px; font-size: 19px; }
+.btn.block { display: block; width: 100%; margin-top: 14px; }
 .btn:disabled { opacity: 0.5; }
 
 /* bottom sheet */
@@ -251,7 +252,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     // =====================================================================
     // Config
     // =====================================================================
-    var BUILD = 'e4eb16e';
+    var BUILD = 'c3dfcea';
     // Hosts a pre-filled link may point at. Prevents a tampered setup link from sending entries elsewhere.
     var FORM_HOSTS = ['forms.office.com', 'forms.office365.us', 'forms.osi.office365.us', 'forms.microsoft.com', 'forms.cloud.microsoft'];
     // Form codes. req = the form must have it; rec = recommended (Setup and Review warn when missing).
@@ -263,6 +264,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         { tok: 'outcome', label: 'Outcome', req: true },
         { tok: 'flightid', label: 'Flight ID', rec: true },
         { tok: 'serial', label: 'Serial', rec: true },
+        { tok: 'pilot', label: 'Pilot in command', rec: true },
         { tok: 'mission', label: 'Mission', rec: true },
         { tok: 'start', label: 'Start (UTC)', rec: true },
         { tok: 'end', label: 'End (UTC)', rec: true },
@@ -274,28 +276,30 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         { tok: 'postcheck', label: 'Postflight inspection', rec: true },
         { tok: 'open', label: 'Open items', rec: true },
         { tok: 'site', label: 'Site' },
-        { tok: 'card', label: 'Project / test card' },
+        { tok: 'manufacturer', label: 'Manufacturer' },
+        { tok: 'card', label: 'Project / task card' },
         { tok: 'batteries', label: 'Batteries' },
-        { tok: 'observer', label: 'Observer' },
+        { tok: 'observer', label: 'Spotter' },
         { tok: 'altitude', label: 'Max alt (m AGL, est.)' },
         { tok: 'incident', label: 'Incident' },
         { tok: 'wind', label: 'Wind' },
         { tok: 'temp', label: 'Temp' },
+        { tok: 'humidity', label: 'Humidity' },
         { tok: 'conditions', label: 'Conditions' },
         { tok: 'wxsource', label: 'Weather source' },
-        { tok: 'observed', label: 'Pilot observations' },
+        { tok: 'observed', label: 'Operational conditions' },
         { tok: 'notes', label: 'Notes' }
     ];
     var MISSIONS = ['Recreational', 'Photography / Videography', 'Inspection', 'Mapping / Surveying', 'Research / Testing', 'Training', 'Drone Show', 'Other'];
     var PRE = [
         { id: 'frame', short: 'Frame/arms', label: 'Frame / arms secure', crit: true, group: 'Airframe & power', help: 'Arms locked, no cracks, fasteners tight, landing gear sound.' },
-        { id: 'battery', short: 'Battery', label: 'Battery secure / undamaged', crit: true, help: 'Latched, no swelling, dents or damaged leads; charge suits the planned flight.' },
-        { id: 'nav', short: 'GPS/compass/IMU', label: 'GPS / compass / IMU status', crit: true, group: 'Navigation & links', help: 'As shown on your controller or ground station: satellite lock, no compass or IMU warnings, calibrated if required. This app does not read them.' },
-        { id: 'link', short: 'Telemetry/video', label: 'Telemetry / video link', na: true, help: 'Telemetry and video showing normally. Mark N/A if the aircraft has neither.' },
+        { id: 'battery', short: 'Battery', label: 'Battery charged / secure / undamaged', crit: true, help: 'Charged for the planned flight (plus reserve), latched, no swelling, dents or damaged leads.' },
+        { id: 'nav', short: 'GPS/compass/IMU', label: 'GPS / compass / IMU status', crit: true, group: 'Navigation & links', help: 'As shown on your controller or app: satellite connection, compass calibrated if prompted, no compass or IMU warnings. This app does not read them.' },
+        { id: 'link', short: 'Telemetry/video', label: 'Telemetry / video (camera / FPV) link', na: true, help: 'Camera or FPV feed and telemetry showing normally on your controller, phone or tablet. Mark N/A if the aircraft has neither.' },
         { id: 'payload', short: 'Payload', label: 'Payload secure', na: true, group: 'Payload & propulsion', help: 'Camera, gimbal or sensor mounted and locked; cables secured. N/A if none fitted.' },
         { id: 'props', short: 'Motors/props', label: 'Motors / propellers inspected', crit: true, help: 'Props undamaged, correct orientation and tight; motors spin freely with no grit or noise.' },
         { id: 'fc', short: 'FC/firmware', label: 'Flight controller / firmware checked', crit: true, group: 'Control & failsafe', help: 'Expected firmware and parameters loaded; no arming warnings.' },
-        { id: 'rc', short: 'RC/failsafe', label: 'RC link / failsafe checked', crit: true, help: 'Controller bound, range check if required, failsafe action set.' },
+        { id: 'rc', short: 'RC/failsafe', label: 'RC link / failsafe checked', crit: true, help: 'Controller charged and powered on, apps running, link bound, range check if required, failsafe action set.' },
         { id: 'rth', short: 'RTH/RTL', label: 'Return-to-home / RTL settings', crit: true, na: true, help: 'Home point and return altitude suit this site’s obstacles. N/A if the aircraft has no return-to-home.' },
         { id: 'site', short: 'Airspace/site/wx', label: 'Airspace / site / weather reviewed', crit: true, group: 'Operation', help: 'Authorization if required, NOTAMs/TFRs, site hazards, people nearby, weather within limits.' }
     ];
@@ -326,8 +330,8 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         { id: 'other', label: 'Other' },
         { id: 'unassessed', label: 'Not yet assessed', excl: true }
     ];
-    var STEPS = ['preflight', 'flightsetup', 'active', 'outcome', 'inspect', 'review'];
-    var STEP_LABEL = { preflight: 'Preflight checklist', flightsetup: 'Flight setup', active: 'Flight in progress', outcome: 'Postflight', inspect: 'Postflight inspection', review: 'Review' };
+    var STEPS = ['preflight', 'active', 'outcome', 'inspect', 'review'];
+    var STEP_LABEL = { home: 'Flight details', preflight: 'Preflight checklist', active: 'Flight in progress', outcome: 'Postflight', inspect: 'Postflight inspection', review: 'Review' };
     var LONG_FLIGHT_MIN = 90;   // ask to verify the end time beyond this
     var ALT_LIMIT_M = 122;      // 400 ft AGL
     var URL_WARN = 7000;        // very long pre-filled links may be cut off
@@ -343,11 +347,11 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     };
 
     var settings = store.get(K.settings) || { url: '', models: ['M1'] };
-    var prefs = store.get(K.prefs) || { aircraft: [], selected: null, mission: '', site: '', observer: '' };
+    var prefs = store.get(K.prefs) || { aircraft: [], selected: null, mission: '', site: '', observer: '', pilot: '' };
     var flights = store.get(K.flights) || {};
     var carry = store.get(K.carry) || {};
     var currentId = store.get(K.current);
-    var ui = { view: 'home', handoffId: null, aircraftReturn: 'home', lastDone: null, gps: '', wx: '', showManualLoc: false, timer: null, openHelp: {} };
+    var ui = { view: 'home', handoffId: null, aircraftReturn: 'home', lastDone: null, gps: '', wx: '', showManualLoc: false, wxManualOpen: false, timer: null, openHelp: {} };
 
     // =====================================================================
     // Helpers
@@ -355,6 +359,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     function pad(n) { return String(n).padStart(2, '0'); }
     function localDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
     function localTime(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+    function fmtTime(d) { return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
     function isoZ(d) { return d.toISOString().replace(/\.\d{3}Z$/, 'Z'); }
     function utcOffset(d) {
         var m = -d.getTimezoneOffset(), s = m >= 0 ? '+' : '-';
@@ -467,9 +472,9 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var a = selectedAircraft(), now = new Date();
         var c = a ? carryFor(a.serial) : null;
         var r = {
-            v: 2, id: uuid(), createdAt: isoZ(now), tz: tzName(), status: 'draft', step: 'preflight',
-            aircraft: a ? { model: a.model, serial: a.serial } : null,
-            mission: prefs.mission || '', site: prefs.site || '', observer: prefs.observer || '',
+            v: 2, id: uuid(), createdAt: isoZ(now), tz: tzName(), status: 'draft', step: 'home',
+            aircraft: a ? { manufacturer: a.manufacturer || '', model: a.model, serial: a.serial } : null,
+            mission: prefs.mission || '', site: prefs.site || '', observer: prefs.observer || '', pilot: prefs.pilot || '',
             card: '', batteries: '', observed: '',
             location: null, weather: null,
             pre: {}, preAck: null,
@@ -513,7 +518,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         r.outcome = { nominal: 'normal', anomaly: 'issue' }[d.outcome] || '';
         if (d.outcome === 'incident') r.notes = ('Previous app outcome: incident. ' + (r.notes || '')).trim();
         r.preAck = { migrated: true };
-        r.step = r.startAt && r.endAt ? 'review' : 'flightsetup';
+        r.step = r.startAt && r.endAt ? 'review' : 'home';
         touch(r);
     }
 
@@ -529,7 +534,6 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         r[key][id] = it;
         touch(r);
     }
-    function wasIssue(it) { return (it.hist || []).some(function (x) { return x.s === 'issue'; }); }
     function changedAfterStart(r, it) {
         if (!r.startAt) return false;
         return (it.hist || []).some(function (x) { return x.at > r.startAt; });
@@ -551,8 +555,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     function checklistText(r, key, defs) {
         return defs.map(function (d, i) {
             var it = item(r[key], d.id), t = (i + 1) + ' ' + d.short + ': ' + stLabel(it.s);
-            if (it.note && (it.s === 'issue' || wasIssue(it))) t += ' (' + it.note + ')';
-            if (it.s !== 'issue' && wasIssue(it)) t += ' [issue fixed]';
+            if (it.note) t += ' (' + it.note + ')';
             if (key === 'pre' && changedAfterStart(r, it)) t += ' [changed after start]';
             return t;
         }).join(' | ');
@@ -612,7 +615,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     }
     function flags(r) {
         var f = { missing: [], block: [], warn: [], open: openItems(r) };
-        if (!r.aircraft || !r.aircraft.model) f.missing.push({ text: 'Aircraft', step: 'flightsetup' });
+        if (!r.aircraft || !r.aircraft.model) f.missing.push({ text: 'Aircraft', step: 'home' });
         if (!r.startAt || !r.endAt) f.missing.push({ text: 'Flight start and end times', step: 'times' });
         if (!r.outcome) f.missing.push({ text: 'How the flight went', step: 'outcome' });
         if (!formStatus().ok) f.missing.push({ text: 'Microsoft Form link (Setup)', step: 'settings' });
@@ -622,14 +625,14 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         if (r.endAt && new Date(r.endAt) > now + 120000) f.block.push({ text: 'End time is in the future.', step: 'times' });
         var dm = durMin(r);
         if (dm != null && dm > 12 * 60) f.warn.push({ text: 'Duration is over 12 hours. Check the times.', step: 'times' });
-        if (!r.mission) f.warn.push({ text: 'Mission type not set.', step: 'flightsetup' });
+        if (!r.mission) f.warn.push({ text: 'Mission type not set.', step: 'home' });
         var c = counts(r, 'pre', PRE);
         if (c.none && !(r.preAck && r.preAck.migrated)) f.warn.push({ text: c.none + ' preflight item' + (c.none > 1 ? 's' : '') + ' not checked.', step: 'preflight' });
         if (PRE.some(function (d) { return changedAfterStart(r, item(r.pre, d.id)); })) f.warn.push({ text: 'Preflight results were changed after the flight started.', step: 'preflight' });
         if (!r.issues.length) f.warn.push({ text: 'Aircraft-issues question not answered.', step: 'outcome' });
-        if (r.location && r.location.at && r.startAt && Math.abs(new Date(r.startAt) - new Date(r.location.at)) > 2 * 3600000) f.warn.push({ text: 'Phone location was captured more than 2 hours from the flight start.', step: 'flightsetup' });
-        if (r.weather && r.weather.observedAt && r.startAt && Math.abs(new Date(r.startAt) - new Date(r.weather.observedAt)) > 2 * 3600000) f.warn.push({ text: 'Weather observation is more than 2 hours from the flight start.', step: 'flightsetup' });
-        if (!r.location || r.location.source === 'none') f.warn.push({ text: 'No location recorded.', step: 'flightsetup' });
+        if (r.location && r.location.at && r.startAt && Math.abs(new Date(r.startAt) - new Date(r.location.at)) > 2 * 3600000) f.warn.push({ text: 'Phone location was captured more than 2 hours from the flight start.', step: 'home' });
+        if (r.weather && r.weather.observedAt && r.startAt && Math.abs(new Date(r.startAt) - new Date(r.weather.observedAt)) > 2 * 3600000) f.warn.push({ text: 'Weather observation is more than 2 hours from the flight start.', step: 'home' });
+        if (!r.location || r.location.source === 'none') f.warn.push({ text: 'No location recorded.', step: 'home' });
         var fs = formStatus();
         if (fs.ok && buildUrl(fs.p.url, valuesForForm(r)).length > URL_WARN) f.warn.push({ text: 'This entry is very long. If the form opens with blank answers, shorten the notes.', step: null });
         return f;
@@ -667,17 +670,19 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         return {
             flightid: r.id,
             date: localDate(s),
-            time: localTime(s) + ' (' + utcOffset(s) + ')',
+            time: fmtTime(s) + ' (' + utcOffset(s) + ')',
             start: r.startAt || '', end: r.endAt || '',
             duration: dm == null ? '' : String(Math.round(dm * 10) / 10),
             lat: loc && loc.lat != null ? String(loc.lat) : '', lng: loc && loc.lng != null ? String(loc.lng) : '', gps: gps,
             site: r.site, model: r.aircraft ? r.aircraft.model : '', serial: r.aircraft ? r.aircraft.serial : '',
+            manufacturer: r.aircraft ? r.aircraft.manufacturer || '' : '', pilot: r.pilot || '',
             mission: r.mission, card: r.card, batteries: r.batteries, observer: r.observer,
             altitude: r.altitude, outcome: (byId(OUTCOMES, r.outcome) || {}).label || '',
             issues: issueText(r), incident: inc,
             preflight: checklistText(r, 'pre', PRE), postcheck: checklistText(r, 'post', POST),
             open: open || 'None',
-            wind: w.wind || '', temp: w.temp || '', conditions: w.cond || '', wxsource: wxsrc,
+            wind: (w.wind || '') + (w.source === 'nws' && w.windSub ? ' (' + w.windSub + ')' : ''),
+            temp: w.temp || '', humidity: w.humidity || '', conditions: w.cond || '', wxsource: wxsrc,
             observed: r.observed,
             notes: [clean(r.notes), corr ? 'Time corrections: ' + corr : ''].filter(Boolean).join(' — ')
         };
@@ -692,20 +697,20 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     // GPS + weather (existing services)
     // =====================================================================
     function getPosition(r) {
-        if (!('geolocation' in navigator)) { ui.gps = 'unsupported'; render(); return; }
+        if (!('geolocation' in navigator)) { ui.gps = 'unsupported'; liveUpdate(); return; }
         ui.gps = 'locating';
-        render();
+        liveUpdate();
         navigator.geolocation.getCurrentPosition(function (p) {
             if (cur() !== r) return;
             r.location = { lat: Number(p.coords.latitude.toFixed(6)), lng: Number(p.coords.longitude.toFixed(6)),
                 acc: p.coords.accuracy, at: isoZ(new Date()), source: 'phone' }; // maximumAge 0: a fresh fix
             ui.gps = '';
             touch(r);
-            render();
+            liveUpdate();
             getWeather(r);
         }, function (err) {
             ui.gps = err.code === 1 ? 'denied' : 'unavailable';
-            render();
+            liveUpdate();
         }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
     }
     function fetchJson(url) {
@@ -721,7 +726,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         return q.value; // km_h-1 (NWS default)
     }
     function formatWx(p, stationId) {
-        var out = { wind: '', windSub: '', temp: '', tempSub: '', cond: '' };
+        var out = { wind: '', windSub: '', temp: '', tempSub: '', humidity: '', cond: '' };
         var spd = toKmh(qv(p.windSpeed)), gust = toKmh(qv(p.windGust)), dir = qv(p.windDirection);
         if (spd != null) {
             var kt = Math.round(spd / 1.852), mph = Math.round(spd / 1.609344);
@@ -741,7 +746,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         }
         var parts = [];
         if (p.textDescription) parts.push(clean(p.textDescription));
-        var rh = qv(p.relativeHumidity); if (rh) parts.push('RH ' + Math.round(rh.value) + '%');
+        var rh = qv(p.relativeHumidity); if (rh) out.humidity = Math.round(rh.value) + '%';
         var vis = qv(p.visibility); if (vis) parts.push('Vis ' + Math.round(vis.value / 1609.344 * 10) / 10 + ' mi');
         out.cond = parts.join(' · ');
         out.station = stationId;
@@ -755,7 +760,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         // ~1 km precision is plenty for the nearest station and avoids sending exact site coordinates
         var rl = Math.round(loc.lat * 100) / 100, rg = Math.round(loc.lng * 100) / 100;
         ui.wx = 'loading';
-        render();
+        liveUpdate();
         fetchJson('https://api.weather.gov/points/' + rl + ',' + rg)
             .then(function (pt) {
                 var url = pt && pt.properties && pt.properties.observationStations;
@@ -775,11 +780,11 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
                 else r.weather = w;
                 ui.wx = '';
                 touch(r);
-                render();
+                liveUpdate();
             })
             .catch(function () {
                 ui.wx = navigator.onLine ? 'unavailable' : 'offline';
-                render();
+                liveUpdate();
             });
     }
 
@@ -862,64 +867,202 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
 
     var VIEWS = {};
 
-    // ---------- Screen 1: Home ----------
+    // ---------- Screen 1: Home = flight setup (aircraft, crew, mission, location, weather) ----------
+    function aircraftName(a) { return a ? [a.manufacturer, a.model].filter(Boolean).join(' ') : ''; }
+    function locPanel(r) {
+        var loc = r.location;
+        var gpsChip = ui.gps === 'locating' ? 'locating…' : ui.gps === 'denied' ? 'permission denied' : ui.gps === 'unavailable' ? 'unavailable' : ui.gps === 'unsupported' ? 'not supported'
+            : !loc ? 'not captured' : loc.source === 'phone' ? '±' + Math.round(loc.acc) + ' m' : loc.source === 'manual' ? 'entered' : 'none';
+        var body = [];
+        if (loc && loc.source === 'phone') {
+            body.push(h('div', { class: 'readouts' },
+                h('div', { class: 'readout' }, h('div', { class: 'k', text: 'Latitude' }), h('div', { class: 'v', id: 'loc-lat', text: String(loc.lat) })),
+                h('div', { class: 'readout' }, h('div', { class: 'k', text: 'Longitude' }), h('div', { class: 'v', id: 'loc-lng', text: String(loc.lng) })),
+                h('div', { class: 'readout wide' }, h('div', { class: 'k', text: 'Accuracy' }), h('div', { class: 'v', text: '±' + Math.round(loc.acc) + ' m' }),
+                    h('div', { class: 'sub', text: 'Captured ' + fmtTime(new Date(loc.at)) + '. This is the phone’s position, not a verified takeoff point.' }))));
+            if (loc.acc > 100) body.push(h('div', { class: 'hint warn', text: 'Poor accuracy. Try again in the open, or enter the position by hand.' }));
+        } else if (loc && loc.source === 'none') {
+            body.push(h('div', { class: 'hint', id: 'loc-none', text: 'Location will be logged as not recorded.' }));
+        }
+        if (ui.gps === 'denied') body.push(h('div', { class: 'hint bad', text: 'Location is off for Safari. Turn it on in Settings › Privacy › Location Services › Safari Websites, or enter the position by hand.' }));
+        if (ui.gps === 'unavailable') body.push(h('div', { class: 'hint bad', text: 'The phone couldn’t get a position. Try again, or enter it by hand.' }));
+        if (ui.showManualLoc || (loc && loc.source === 'manual')) {
+            var manual = loc && loc.source === 'manual';
+            var latI = h('input', { class: 'mono', id: 'f-lat', inputmode: 'decimal', autocomplete: 'off', value: manual && loc.lat != null ? String(loc.lat) : '' });
+            var lngI = h('input', { class: 'mono', id: 'f-lng', inputmode: 'decimal', autocomplete: 'off', value: manual && loc.lng != null ? String(loc.lng) : '' });
+            var msg = h('div', { class: 'hint', id: 'loc-msg' });
+            var saveManual = function () {
+                if (latI.value === '' || lngI.value === '') return;
+                var la = Number(latI.value), ln = Number(lngI.value);
+                if (!isFinite(la) || !isFinite(ln) || la < -90 || la > 90 || ln < -180 || ln > 180) {
+                    msg.textContent = 'Latitude −90 to 90, longitude −180 to 180.'; msg.className = 'hint warn'; return;
+                }
+                msg.textContent = 'Saved as entered by you.'; msg.className = 'hint';
+                r.location = { lat: la, lng: ln, source: 'manual', at: isoZ(new Date()) };
+                touch(r);
+            };
+            latI.addEventListener('input', saveManual); lngI.addEventListener('input', saveManual);
+            // look up weather once the pilot finishes typing a position
+            var wxOnBlur = function () { if (r.location && r.location.source === 'manual' && !r.weather && !r.startAt) getWeather(r); };
+            latI.addEventListener('change', wxOnBlur); lngI.addEventListener('change', wxOnBlur);
+            body.push(h('div', { class: 'row2' }, field('Latitude', latI), field('Longitude', lngI)), msg);
+        }
+        body.push(h('div', { class: 'actions-row' },
+            h('button', { class: 'link-btn left', type: 'button', id: 'btn-gps', disabled: !!r.startAt, onclick: function () { ui.showManualLoc = false; getPosition(r); } }, loc && loc.source === 'phone' ? 'Get position again' : 'Use phone location'),
+            h('button', { class: 'link-btn left', type: 'button', id: 'btn-manual-loc', onclick: function () { ui.showManualLoc = true; liveUpdate(); } }, 'Enter by hand'),
+            h('button', { class: 'link-btn left', type: 'button', id: 'btn-no-loc', onclick: function () { ui.showManualLoc = false; r.location = { source: 'none' }; touch(r); liveUpdate(); } }, 'No location')));
+        var p = panel('Location', h('span', { class: 'chip' + (loc && loc.source === 'phone' && loc.acc <= 50 ? ' ok' : ui.gps && ui.gps !== 'locating' ? ' bad' : ''), id: 'gps-status', text: gpsChip }), body);
+        p.id = 'panel-loc';
+        return p;
+    }
+    function wxPanel(r) {
+        var w = r.weather, loc = r.location;
+        var wxChip = ui.wx === 'loading' ? 'loading…' : ui.wx === 'offline' ? 'offline' : ui.wx === 'unavailable' ? 'unavailable (US only)'
+            : !w ? (loc && loc.lat != null ? 'not loaded' : 'needs location') : w.source === 'pilot' ? 'entered by you' : 'observed';
+        var ageMin = w && w.observedAt ? Math.round((Date.now() - new Date(w.observedAt)) / 60000) : null;
+        var ro = function (k, id, v, sub, wide) {
+            return h('div', { class: 'readout' + (wide ? ' wide' : '') }, h('div', { class: 'k', text: k }), h('div', { class: 'v', id: id, text: v || '—' }), sub != null ? h('div', { class: 'sub', id: id + '-sub', text: sub }) : null);
+        };
+        var body = [h('div', { class: 'readouts' },
+            ro('Wind', 'wx-wind-v', w && w.wind, (w && w.windSub) || ''),
+            ro('Temp', 'wx-temp-v', w && w.temp, (w && w.tempSub) || ''),
+            ro('Humidity', 'wx-hum-v', w && w.humidity, null),
+            ro('Conditions', 'wx-cond-v', w && w.cond, null),
+            h('div', { class: 'readout wide' }, h('div', { class: 'sub', id: 'wx-src', text: w && w.source === 'nws' ? 'NWS station ' + w.station + (w.observedAt ? ', observed ' + fmtTime(new Date(w.observedAt)) + ' (' + ageMin + ' min ago)' : '') : w && w.source === 'pilot' ? 'Entered by you' : 'Nearest National Weather Service station observation. Not a forecast.' })))];
+        if (ageMin != null && ageMin > 90 && w.source === 'nws') body.push(h('div', { class: 'hint warn', text: 'This observation is over 90 minutes old.' }));
+        if (loc && loc.lat != null && ui.wx && ui.wx !== 'loading') body.push(h('button', { class: 'link-btn left', type: 'button', id: 'btn-wx-retry', onclick: function () { getWeather(r); } }, 'Try weather again'));
+        var wIn = function (k, label, id, max) {
+            return field(label, h('input', { class: 'mono', id: id, maxlength: max, autocomplete: 'off', value: (w && w[k]) || '', oninput: function () {
+                var cw = r.weather;
+                if (!cw || cw.source !== 'pilot') r.weather = { source: 'pilot', wind: cw ? cw.wind : '', temp: cw ? cw.temp : '', humidity: cw ? cw.humidity : '', cond: cw ? cw.cond : '', auto: cw && cw.source === 'nws' ? cw : null };
+                r.weather[k] = clean(this.value);
+                touch(r);
+            } }));
+        };
+        var det = h('details', { class: 'hint', ontoggle: function () { ui.wxManualOpen = det.open; } }, h('summary', { text: 'Enter or correct weather by hand' }),
+            wIn('wind', 'Wind', 'f-wind', 80), h('div', { class: 'row2' }, wIn('temp', 'Temperature', 'f-temp', 40), wIn('humidity', 'Humidity', 'f-humidity', 20)), wIn('cond', 'Conditions', 'f-cond', 160));
+        det.open = !!ui.wxManualOpen;
+        body.push(det, h('div', { class: 'hint', text: 'For the log only. Use official aviation weather for go/no-go.' }));
+        var p = panel('Weather', h('span', { class: 'chip' + (w && w.source === 'nws' && ageMin <= 90 ? ' ok' : ui.wx && ui.wx !== 'loading' ? ' bad' : ''), id: 'wx-status', text: wxChip }), body);
+        p.id = 'panel-wx';
+        return p;
+    }
+    // GPS and weather arrive while the pilot may be typing: refresh only those two panels.
+    function liveUpdate() {
+        if (ui.view !== 'home') return;
+        var r = cur();
+        if (!r) return;
+        var a = $('panel-loc'), b = $('panel-wx');
+        if (a) a.replaceWith(locPanel(r));
+        if (b) b.replaceWith(wxPanel(r));
+    }
+    function discardFlight(r) {
+        sheet('Discard this flight?', h('p', { text: 'Everything entered for this flight is deleted from the phone. It was never submitted.' }),
+            [{ label: 'Keep it', primary: true }, { label: 'Discard flight', danger: true, fn: function () {
+                delete flights[r.id]; currentId = null; ui.gps = ''; ui.wx = ''; ui.showManualLoc = false; saveAll(); go('home');
+            } }]);
+    }
+    function startTimer(r) {
+        if (!r.aircraft) { ui.aircraftReturn = 'home'; go('aircraft'); return; }
+        r.startAt = isoZ(new Date());
+        r.endAt = null;
+        touch(r);
+        go('active');
+    }
     VIEWS.home = function (top, view, dock) {
-        brandHeader(top);
-        var r = cur(), a = selectedAircraft(), fs = formStatus();
-        if (!fs.ok) add(view, h('div', { class: 'banner warn', id: 'setup-banner' }, 'This phone isn’t connected to your form yet. Tap ', h('strong', { text: 'Setup' }), '.'));
-        if (a) add(view, carryBanner(a.serial, function (c) {
-            // record the resolution in the draft for this aircraft, or in the next flight created
-            var d = cur();
-            if (d && !d.startAt && d.aircraft && d.aircraft.serial === a.serial) {
-                d.carry = { serial: a.serial, text: c.text, from: c.at, resolvedAt: c.resolvedAt };
-                touch(d);
-                delete carry[a.serial];
+        var editing = fromReview();
+        var r = cur() || newRecord();
+        var started = !!r.startAt;
+        if (editing) header(top, 'Flight details', backToReview); else brandHeader(top);
+        syncCarry(r);
+        if (!editing) {
+            if (!formStatus().ok) add(view, h('div', { class: 'banner warn', id: 'setup-banner' }, 'This phone isn’t connected to your form yet. Tap ', h('strong', { text: 'Setup' }), '.'));
+            if (r.aircraft && r.aircraft.serial) add(view, carryBanner(r.aircraft.serial, function (c) {
+                r.carry = { serial: r.aircraft.serial, text: c.text, from: c.at, resolvedAt: c.resolvedAt };
+                touch(r);
+                delete carry[r.aircraft.serial];
+            }));
+            var pend = pendingRecords();
+            if (pend.length) {
+                add(view, panel('Waiting to submit', h('span', { class: 'chip bad', id: 'pending-count', text: pend.length + ' on phone' }),
+                    h('div', { class: 'hint', text: 'Finalized logs not yet confirmed as submitted to the form.' }),
+                    pend.map(function (p) {
+                        return h('div', { class: 'actions-row' },
+                            h('span', { class: 'hint', text: (p.aircraft ? p.aircraft.serial || p.aircraft.model : '?') + ' · ' + (p.startAt ? localDate(new Date(p.startAt)) + ' ' + fmtTime(new Date(p.startAt)) : '') }),
+                            h('button', { class: 'link-btn', type: 'button', onclick: function () { ui.handoffId = p.id; go('handoff'); } }, 'Submit now'));
+                    })));
             }
-        }));
-
-        var pend = pendingRecords();
-        if (pend.length) {
-            add(view, panel('Waiting to submit', h('span', { class: 'chip bad', id: 'pending-count', text: pend.length + ' on phone' }),
-                h('div', { class: 'hint', text: 'Finalized logs not yet confirmed as submitted to the form.' }),
-                pend.map(function (p) {
-                    return h('div', { class: 'actions-row' },
-                        h('span', { class: 'hint', text: (p.aircraft ? p.aircraft.serial || p.aircraft.model : '?') + ' · ' + (p.startAt ? localDate(new Date(p.startAt)) + ' ' + localTime(new Date(p.startAt)) : '') }),
-                        h('button', { class: 'link-btn', type: 'button', onclick: function () { ui.handoffId = p.id; go('handoff'); } }, 'Submit now'));
-                })));
+        }
+        if (started && !editing) {
+            var c0 = counts(r, 'pre', PRE);
+            add(view, panel('Flight in progress', h('span', { class: 'chip', text: STEP_LABEL[r.step] || r.step }),
+                h('div', { class: 'hint', text: aircraftName(r.aircraft) + ' · ' + (r.aircraft && r.aircraft.serial || '') + ' · started ' + fmtTime(new Date(r.startAt)) }),
+                h('div', { class: 'hint' + (c0.issue ? ' bad' : ''), id: 'home-readiness', text: 'Preflight ' + (c0.pass + c0.na + c0.issue) + '/' + PRE.length + ' checked' + (c0.issue ? ' · ' + c0.issue + ' issue' + (c0.issue > 1 ? 's' : '') : '') + (!r.endAt ? ' · timer running' : '') }),
+                h('button', { class: 'link-btn left', type: 'button', id: 'btn-discard', onclick: function () { discardFlight(r); } }, 'Discard flight')));
+            primary(dock, 'Resume Flight', function () { go(r.step); }, { id: 'btn-start', big: true });
+            return;
         }
 
-        add(view, panel('Aircraft', h('button', { class: 'link-btn', type: 'button', id: 'btn-aircraft', onclick: function () { ui.aircraftReturn = 'home'; go('aircraft'); } }, a ? 'Change' : 'Add'),
-            a ? h('div', { class: 'readout wide' }, h('div', { class: 'k', text: a.model }), h('div', { class: 'v', id: 'home-aircraft', text: a.serial || '(no serial)' }))
-              : h('div', { class: 'hint warn', text: 'No aircraft selected. Add your aircraft so you don’t retype it each flight.' })));
-
-        if (r) {
+        add(view, panel('Aircraft', h('button', { class: 'link-btn', type: 'button', id: 'btn-aircraft', disabled: started, onclick: function () { ui.aircraftReturn = 'home'; go('aircraft'); } }, r.aircraft ? 'Change' : 'Add'),
+            r.aircraft ? h('div', { class: 'readout wide' }, h('div', { class: 'k', text: aircraftName(r.aircraft) }), h('div', { class: 'v', id: 'home-aircraft', text: r.aircraft.serial || '(no serial)' }))
+                : h('div', { class: 'hint warn', id: 'no-aircraft', text: 'No aircraft selected. Add your aircraft so you don’t retype it each flight.' }),
+            field('Battery IDs', h('input', { class: 'mono', id: 'f-batteries', maxlength: 120, autocomplete: 'off', autocapitalize: 'characters', placeholder: 'B12, B13', value: r.batteries,
+                oninput: function () { r.batteries = clean(this.value); touch(r); } }))));
+        add(view, panel('Crew', null, h('div', { class: 'row2' },
+            field('Pilot in command', h('input', { id: 'f-pilot', maxlength: 80, autocomplete: 'off', value: r.pilot,
+                oninput: function () { r.pilot = clean(this.value); prefs.pilot = r.pilot; touch(r); } })),
+            field('Spotter / visual observer', h('input', { id: 'f-observer', maxlength: 80, autocomplete: 'off', value: r.observer,
+                oninput: function () { r.observer = clean(this.value); prefs.observer = r.observer; touch(r); } })))));
+        add(view, panel('Mission', null,
+            h('div', { class: 'chips', role: 'radiogroup', 'aria-label': 'Mission type' }, MISSIONS.map(function (m) {
+                return h('button', { class: 'opt', type: 'button', role: 'radio', 'aria-checked': String(r.mission === m), onclick: function (e) {
+                    r.mission = m; prefs.mission = m; touch(r);
+                    e.currentTarget.parentNode.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', String(b === e.currentTarget)); });
+                } }, h('span', { class: 'dot' }), m);
+            })),
+            field('Site', h('input', { id: 'f-site', maxlength: 120, autocomplete: 'off', placeholder: 'e.g. Riverside Park, north field', value: r.site,
+                oninput: function () { r.site = clean(this.value); prefs.site = r.site; touch(r); } })),
+            field('Project / task card', h('input', { class: 'mono', id: 'f-card', maxlength: 60, autocomplete: 'off', autocapitalize: 'characters', value: r.card,
+                oninput: function () { r.card = clean(this.value); touch(r); } }))));
+        add(view, locPanel(r));
+        add(view, wxPanel(r));
+        add(view, panel('Operational conditions & preflight notes', null, h('textarea', { id: 'f-observed', 'aria-label': 'Operational conditions and preflight notes', maxlength: 400, rows: 3,
+            placeholder: 'Airspace class, TFRs, people nearby, standoff distance, hazards…', value: r.observed,
+            oninput: function () { r.observed = clean(this.value); touch(r); } })));
+        if (!editing && r.step !== 'home') {
             var c = counts(r, 'pre', PRE);
-            add(view, panel('Unfinished flight', h('span', { class: 'chip', text: STEP_LABEL[r.step] || r.step }),
-                h('div', { class: 'hint', text: 'Created ' + localTime(new Date(r.createdAt)) + ' · ' + (r.aircraft ? r.aircraft.serial || r.aircraft.model : 'no aircraft') }),
-                h('div', { class: 'hint' + (c.issue ? ' bad' : ''), id: 'home-readiness', text: 'Preflight ' + (c.pass + c.na + c.issue) + '/' + PRE.length + ' checked' + (c.issue ? ' · ' + c.issue + ' issue' + (c.issue > 1 ? 's' : '') : '') + (r.startAt && !r.endAt ? ' · timer running' : '') }),
-                h('button', { class: 'link-btn left', type: 'button', id: 'btn-discard', onclick: function () {
-                    sheet('Discard this flight?', h('p', { text: 'Everything entered for this flight is deleted from the phone. It was never submitted.' }),
-                        [{ label: 'Keep it', primary: true }, { label: 'Discard flight', danger: true, fn: function () { delete flights[r.id]; currentId = null; saveAll(); render(); } }]);
-                } }, 'Discard flight')));
-            primary(dock, 'Resume Flight', function () { go(r.step); }, { id: 'btn-start', big: true });
-        } else {
-            add(view, panel('Readiness', null, h('div', { class: 'hint', id: 'home-readiness', text: 'Preflight not started. Start Flight opens a fresh checklist.' })));
-            primary(dock, 'Start Flight', function () { startNext(); }, { id: 'btn-start', big: true });
+            add(view, h('div', { class: 'hint' + (c.issue ? ' bad' : ''), id: 'home-readiness', text: 'Preflight ' + (c.pass + c.na + c.issue) + '/' + PRE.length + ' checked' + (c.issue ? ' · ' + c.issue + ' issue' + (c.issue > 1 ? 's' : '') : '') + '.' }));
+            add(view, h('button', { class: 'link-btn left', type: 'button', id: 'btn-discard', onclick: function () { discardFlight(r); } }, 'Discard flight'));
+        }
+        add(view, h('div', { class: 'hint', text: 'Record created ' + fmtTime(new Date(r.createdAt)) + ' ' + utcOffset(new Date(r.createdAt)) + (r.tz ? ' (' + r.tz + ')' : '') + '. Flight ID ' + r.id.slice(0, 8) + '.' }));
+
+        if (editing) primary(dock, 'Back to review', backToReview, { id: 'btn-continue' });
+        else primary(dock, r.step === 'preflight' ? 'Continue to Preflight' : 'Start Flight', function () {
+            if (!r.aircraft) { ui.aircraftReturn = 'home'; go('aircraft'); return; }
+            go('preflight');
+        }, { id: 'btn-start', big: true });
+
+        // capture location and weather automatically (the permission prompt appears in context)
+        if (!editing && !started) {
+            if (!r.location && !ui.gps) getPosition(r);
+            else if (r.location && r.location.lat != null && !r.weather && !ui.wx) getWeather(r);
         }
     };
 
-    // ---------- Aircraft (uses the existing model list) ----------
+    // ---------- Aircraft profiles ----------
+    var MANUFACTURERS = ['DJI', 'Autel Robotics', 'Skydio', 'Parrot', 'Freefly', 'Inspired Flight', 'Custom build'];
+    function uniq(list) { return list.filter(function (x, i) { return x && list.indexOf(x) === i; }); }
     VIEWS.aircraft = function (top, view, dock) {
-        var ret = function () { go(ui.aircraftReturn); };
+        var ret = function () { go(ui.aircraftReturn || 'home'); };
         header(top, 'Aircraft', ret);
         var r = cur();
-        var applyToDraft = function (a) { if (r && !r.startAt && r.status === 'draft') { r.aircraft = { model: a.model, serial: a.serial }; touch(r); } };
+        var applyToDraft = function (a) { if (r && !r.startAt && r.status === 'draft') { r.aircraft = { manufacturer: a.manufacturer || '', model: a.model, serial: a.serial }; touch(r); } };
         add(view, panel('Your aircraft', null,
             prefs.aircraft.length ? h('div', { class: 'opts', role: 'radiogroup', 'aria-label': 'Selected aircraft' }, prefs.aircraft.map(function (a) {
                 return h('div', { class: 'actions-row' },
                     h('button', { class: 'opt', type: 'button', role: 'radio', 'aria-checked': String(prefs.selected === a.id), onclick: function () {
                         prefs.selected = a.id; applyToDraft(a); saveAll(); render();
-                    } }, h('span', { class: 'dot' }), h('span', null, a.model + ' · ' + (a.serial || 'no serial'))),
+                    } }, h('span', { class: 'dot' }), h('span', null, aircraftName(a) + ' · ' + (a.serial || 'no serial'))),
                     h('button', { class: 'link-btn', type: 'button', 'aria-label': 'Remove ' + (a.serial || a.model), onclick: function () {
                         sheet('Remove ' + (a.serial || a.model) + '?', h('p', { text: 'Removes it from this phone’s list. Submitted logs are not affected.' }),
                             [{ label: 'Keep', primary: true }, { label: 'Remove', danger: true, fn: function () {
@@ -928,21 +1071,27 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
                                 saveAll(); render();
                             } }]);
                     } }, 'Remove'));
-            })) : h('div', { class: 'hint', text: 'None yet.' })));
-        var models = settings.models && settings.models.length ? settings.models : ['M1'];
-        var sel = h('select', { id: 'a-model' }, models.map(function (m) { return h('option', { value: m, text: m }); }));
+            })) : h('div', { class: 'hint', text: 'None yet. Add one below.' })));
+        var mfrs = uniq(prefs.aircraft.map(function (a) { return a.manufacturer; }).concat(MANUFACTURERS));
+        var models = uniq((settings.models || []).concat(prefs.aircraft.map(function (a) { return a.model; })));
+        var mfr = h('input', { id: 'a-mfr', list: 'dl-mfr', maxlength: 60, autocomplete: 'off', placeholder: 'e.g. DJI' });
+        var mod = h('input', { id: 'a-model', list: 'dl-model', maxlength: 60, autocomplete: 'off', placeholder: 'Type or pick, e.g. Mini 4 Pro' });
         var ser = h('input', { class: 'mono', id: 'a-serial', maxlength: 60, autocomplete: 'off', autocapitalize: 'characters' });
-        add(view, panel('Add aircraft', null, h('div', { class: 'row2' }, field('Model', sel, true), field('Airframe serial', ser)),
-            h('div', { class: 'hint', text: 'Models come from Setup.' }),
-            h('button', { class: 'link-btn left', type: 'button', id: 'btn-add-aircraft', onclick: function () {
-                var s = clean(ser.value).toUpperCase().slice(0, 60);
-                if (prefs.aircraft.some(function (x) { return x.model === sel.value && x.serial === s; })) { ser.focus(); return; }
-                var a = { id: uuid(), model: sel.value, serial: s };
+        var msg = h('div', { class: 'hint', id: 'a-msg' });
+        add(view, panel('Add aircraft', null,
+            h('datalist', { id: 'dl-mfr' }, mfrs.map(function (m) { return h('option', { value: m }); })),
+            h('datalist', { id: 'dl-model' }, models.map(function (m) { return h('option', { value: m }); })),
+            field('Manufacturer', mfr), field('Model', mod, true), field('Airframe serial', ser), msg,
+            h('button', { class: 'btn block', type: 'button', id: 'btn-add-aircraft', onclick: function () {
+                var m = clean(mod.value).slice(0, 60), s = clean(ser.value).toUpperCase().slice(0, 60), f = clean(mfr.value).slice(0, 60);
+                if (!m) { msg.textContent = 'Enter the model.'; msg.className = 'hint bad'; mod.focus(); return; }
+                if (prefs.aircraft.some(function (x) { return x.model === m && x.serial === s && (x.manufacturer || '') === f; })) { msg.textContent = 'That aircraft is already in the list.'; msg.className = 'hint bad'; return; }
+                var a = { id: uuid(), manufacturer: f, model: m, serial: s };
                 prefs.aircraft.push(a);
                 prefs.selected = a.id;
                 applyToDraft(a);
                 saveAll(); render();
-            } }, '+ Add and select')));
+            } }, '+ Add and select aircraft')));
         primary(dock, 'Done', ret, { id: 'btn-aircraft-done' });
     };
 
@@ -966,7 +1115,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             h('div', { class: 'ck-top' },
                 h('button', { class: 'ck-main', type: 'button', 'aria-pressed': String(it.s === 'pass'), 'aria-label': d.label + ': ' + stLabel(it.s) + '. Tap to mark passed.', onclick: set('pass') },
                     h('span', { class: 'ck-icon', 'aria-hidden': 'true', text: icon }),
-                    h('span', { class: 'ck-label' }, d.label, h('small', { text: stLabel(it.s) + (d.crit && key === 'pre' ? ' · critical' : '') + (it.s !== 'issue' && wasIssue(it) ? ' · issue fixed' : '') }))),
+                    h('span', { class: 'ck-label' }, d.label, h('small', { text: stLabel(it.s) + (d.crit && key === 'pre' ? ' · critical' : '') }))),
                 h('div', { class: 'ck-side' },
                     h('button', { class: 'ck-btn', type: 'button', 'aria-pressed': String(it.s === 'issue'), 'aria-label': d.label + ': issue found', onclick: set('issue') }, 'Issue'),
                     d.na ? h('button', { class: 'ck-btn', type: 'button', 'aria-pressed': String(it.s === 'na'), 'aria-label': d.label + ': not applicable', onclick: set('na') }, 'N/A') : null,
@@ -974,11 +1123,12 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var more = [];
         if (ui.openHelp[sid] && d.help) more.push(h('div', { class: 'hint', text: d.help }));
         if (hintNode) more.push(hintNode);
-        if (it.s === 'issue') {
-            more.push(h('input', { 'aria-label': d.label + ' issue note', placeholder: 'What did you find? (optional)', maxlength: 200, value: it.note || '', autocomplete: 'off',
-                oninput: function () { r[key][d.id].note = clean(this.value); touch(r); } }));
-            if (d.crit && key === 'pre') more.push(h('div', { class: 'hint bad', text: 'Critical. Fix it and mark Pass, or follow your operating procedure. The issue stays on record.' }));
+        // the note stays visible (and logged) whenever it has text, whatever the result
+        if (it.s === 'issue' || it.note) {
+            more.push(h('input', { 'aria-label': d.label + ' note', placeholder: it.s === 'issue' ? 'What did you find? (optional)' : 'Note (optional)', maxlength: 200, value: it.note || '', autocomplete: 'off',
+                oninput: function () { var cur0 = item(r[key], d.id); cur0.note = clean(this.value); r[key][d.id] = cur0; touch(r); } }));
         }
+        if (it.s === 'issue' && d.crit && key === 'pre') more.push(h('div', { class: 'hint bad', text: 'Critical. Fix it and mark Pass, or follow your operating procedure. The issue stays on record.' }));
         if (more.length) add(row, h('div', { class: 'ck-more' }, more));
         return row;
     }
@@ -1011,9 +1161,9 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             add(box, checkRow(r, 'pre', d));
         });
         add(view, box);
-        primary(dock, fromReview() ? 'Back to review' : 'Continue', function () {
+        primary(dock, fromReview() ? 'Back to review' : 'Start Flight Timer', function () {
             var cc = counts(r, 'pre', PRE);
-            var next = function () { if (fromReview()) backToReview(); else go('flightsetup'); };
+            var next = function () { if (fromReview()) backToReview(); else startTimer(r); };
             var afterCrit = function () {
                 if (!cc.none) { next(); return; }
                 var names = PRE.filter(function (d) { return !item(r.pre, d.id).s; }).map(function (d) { return d.label; });
@@ -1029,125 +1179,14 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
                 return;
             }
             afterCrit();
-        }, { id: 'btn-continue' });
-    };
-
-    // ---------- Screen 3: Flight setup ----------
-    VIEWS.flightsetup = function (top, view, dock) {
-        var r = cur();
-        if (!r) { go('home'); return; }
-        syncCarry(r);
-        var editing = fromReview();
-        header(top, 'Flight setup', editing ? backToReview : function () { go('preflight'); }, 'flightsetup');
-
-        add(view, panel('Aircraft', h('button', { class: 'link-btn', type: 'button', id: 'btn-change-aircraft', disabled: !!r.startAt, onclick: function () { ui.aircraftReturn = 'flightsetup'; go('aircraft'); } }, r.aircraft ? 'Change' : 'Choose'),
-            r.aircraft ? h('div', { class: 'readout wide' }, h('div', { class: 'k', text: r.aircraft.model }), h('div', { class: 'v', id: 'setup-aircraft', text: r.aircraft.serial || '(no serial)' }))
-                : h('div', { class: 'hint bad', text: 'Choose an aircraft to continue.' }),
-            field('Battery IDs', h('input', { class: 'mono', id: 'f-batteries', maxlength: 120, autocomplete: 'off', autocapitalize: 'characters', placeholder: 'B12, B13', value: r.batteries,
-                oninput: function () { r.batteries = clean(this.value); touch(r); } })),
-            field('Visual observer', h('input', { id: 'f-observer', maxlength: 80, autocomplete: 'off', value: r.observer,
-                oninput: function () { r.observer = clean(this.value); prefs.observer = r.observer; touch(r); } }))));
-
-        add(view, panel('Mission', null,
-            h('div', { class: 'chips', role: 'radiogroup', 'aria-label': 'Mission type' }, MISSIONS.map(function (m) {
-                return h('button', { class: 'opt', type: 'button', role: 'radio', 'aria-checked': String(r.mission === m), onclick: function () { r.mission = m; prefs.mission = m; touch(r); render(); } }, h('span', { class: 'dot' }), m);
-            })),
-            field('Site', h('input', { id: 'f-site', maxlength: 120, autocomplete: 'off', placeholder: 'e.g. North field', value: r.site,
-                oninput: function () { r.site = clean(this.value); prefs.site = r.site; touch(r); } })),
-            field('Project / test card', h('input', { class: 'mono', id: 'f-card', maxlength: 60, autocomplete: 'off', autocapitalize: 'characters', value: r.card,
-                oninput: function () { r.card = clean(this.value); touch(r); } }))));
-
-        // Location: the phone's position, labelled as such
-        var loc = r.location;
-        var gpsChip = ui.gps === 'locating' ? 'locating…' : ui.gps === 'denied' ? 'permission denied' : ui.gps === 'unavailable' ? 'unavailable' : ui.gps === 'unsupported' ? 'not supported'
-            : !loc ? 'not captured' : loc.source === 'phone' ? '±' + Math.round(loc.acc) + ' m' : loc.source === 'manual' ? 'entered' : 'none';
-        var locBody = [];
-        if (loc && loc.source === 'phone') {
-            locBody.push(h('div', { class: 'readouts' },
-                h('div', { class: 'readout' }, h('div', { class: 'k', text: 'Latitude' }), h('div', { class: 'v', id: 'loc-lat', text: String(loc.lat) })),
-                h('div', { class: 'readout' }, h('div', { class: 'k', text: 'Longitude' }), h('div', { class: 'v', id: 'loc-lng', text: String(loc.lng) })),
-                h('div', { class: 'readout wide' }, h('div', { class: 'k', text: 'Accuracy' }), h('div', { class: 'v', text: '±' + Math.round(loc.acc) + ' m' }),
-                    h('div', { class: 'sub', text: 'Captured ' + localTime(new Date(loc.at)) + '. This is the phone’s position, not a verified takeoff point.' }))));
-            if (loc.acc > 100) locBody.push(h('div', { class: 'hint warn', text: 'Poor accuracy. Try again in the open, or enter the position by hand.' }));
-        } else if (loc && loc.source === 'none') {
-            locBody.push(h('div', { class: 'hint', id: 'loc-none', text: 'Location will be logged as not recorded.' }));
-        }
-        if (ui.gps === 'denied') locBody.push(h('div', { class: 'hint bad', text: 'Location is off for Safari. Turn it on in Settings › Privacy › Location Services › Safari Websites, or enter the position by hand.' }));
-        if (ui.gps === 'unavailable') locBody.push(h('div', { class: 'hint bad', text: 'The phone couldn’t get a position. Try again, or enter it by hand.' }));
-        if (ui.showManualLoc || (loc && loc.source === 'manual')) {
-            var manual = loc && loc.source === 'manual';
-            var latI = h('input', { class: 'mono', id: 'f-lat', inputmode: 'decimal', autocomplete: 'off', value: manual && loc.lat != null ? String(loc.lat) : '' });
-            var lngI = h('input', { class: 'mono', id: 'f-lng', inputmode: 'decimal', autocomplete: 'off', value: manual && loc.lng != null ? String(loc.lng) : '' });
-            var msg = h('div', { class: 'hint', id: 'loc-msg' });
-            var saveManual = function () {
-                if (latI.value === '' || lngI.value === '') return;
-                var la = Number(latI.value), ln = Number(lngI.value);
-                if (!isFinite(la) || !isFinite(ln) || la < -90 || la > 90 || ln < -180 || ln > 180) {
-                    msg.textContent = 'Latitude −90 to 90, longitude −180 to 180.'; msg.className = 'hint warn'; return;
-                }
-                msg.textContent = 'Saved as entered by you.'; msg.className = 'hint';
-                r.location = { lat: la, lng: ln, source: 'manual', at: isoZ(new Date()) };
-                touch(r);
-            };
-            latI.addEventListener('input', saveManual); lngI.addEventListener('input', saveManual);
-            locBody.push(h('div', { class: 'row2' }, field('Latitude', latI), field('Longitude', lngI)), msg);
-        }
-        locBody.push(h('div', { class: 'actions-row' },
-            h('button', { class: 'link-btn left', type: 'button', id: 'btn-gps', onclick: function () { ui.showManualLoc = false; getPosition(r); } }, loc && loc.source === 'phone' ? 'Get position again' : 'Use phone location'),
-            h('button', { class: 'link-btn', type: 'button', id: 'btn-manual-loc', onclick: function () { ui.showManualLoc = true; render(); } }, 'Enter by hand'),
-            h('button', { class: 'link-btn', type: 'button', id: 'btn-no-loc', onclick: function () { ui.showManualLoc = false; r.location = { source: 'none' }; touch(r); render(); } }, 'No location')));
-        add(view, panel('Phone location', h('span', { class: 'chip' + (loc && loc.source === 'phone' && loc.acc <= 50 ? ' ok' : ui.gps && ui.gps !== 'locating' ? ' bad' : ''), id: 'gps-status', text: gpsChip }), locBody));
-
-        // Weather (existing NWS observation lookup)
-        var w = r.weather;
-        var wxChip = ui.wx === 'loading' ? 'loading…' : ui.wx === 'offline' ? 'offline' : ui.wx === 'unavailable' ? 'unavailable (US only)'
-            : !w ? (loc && loc.lat != null ? 'not loaded' : 'needs location') : w.source === 'pilot' ? 'entered by you' : 'observed';
-        var ageMin = w && w.observedAt ? Math.round((Date.now() - new Date(w.observedAt)) / 60000) : null;
-        var wxBody = [h('div', { class: 'readouts' },
-            h('div', { class: 'readout' }, h('div', { class: 'k', text: 'Wind' }), h('div', { class: 'v', id: 'wx-wind-v', text: (w && w.wind) || '—' }), h('div', { class: 'sub', text: (w && w.windSub) || '' })),
-            h('div', { class: 'readout' }, h('div', { class: 'k', text: 'Temp' }), h('div', { class: 'v', id: 'wx-temp-v', text: (w && w.temp) || '—' }), h('div', { class: 'sub', text: (w && w.tempSub) || '' })),
-            h('div', { class: 'readout wide' }, h('div', { class: 'k', text: 'Conditions' }), h('div', { class: 'v', id: 'wx-cond-v', text: (w && w.cond) || '—' }),
-                h('div', { class: 'sub', id: 'wx-src', text: w && w.source === 'nws' ? 'NWS station ' + w.station + (w.observedAt ? ', observed ' + localTime(new Date(w.observedAt)) + ' (' + ageMin + ' min ago)' : '') : w && w.source === 'pilot' ? 'Entered by you' : 'Nearest National Weather Service station observation. Not a forecast.' })))];
-        if (ageMin != null && ageMin > 90 && w.source === 'nws') wxBody.push(h('div', { class: 'hint warn', text: 'This observation is over 90 minutes old.' }));
-        if (loc && loc.lat != null && ui.wx && ui.wx !== 'loading') wxBody.push(h('button', { class: 'link-btn left', type: 'button', id: 'btn-wx-retry', onclick: function () { getWeather(r); } }, 'Try weather again'));
-        var wIn = function (k, label, id, max) {
-            return field(label, h('input', { class: 'mono', id: id, maxlength: max, autocomplete: 'off', value: (w && w[k]) || '', oninput: function () {
-                var cw = r.weather;
-                if (!cw || cw.source !== 'pilot') r.weather = { source: 'pilot', wind: cw ? cw.wind : '', temp: cw ? cw.temp : '', cond: cw ? cw.cond : '', auto: cw && cw.source === 'nws' ? cw : null };
-                r.weather[k] = clean(this.value);
-                touch(r);
-            } }));
-        };
-        wxBody.push(h('details', { class: 'hint' }, h('summary', { text: 'Enter or correct weather by hand' }),
-            wIn('wind', 'Wind', 'f-wind', 80), wIn('temp', 'Temperature', 'f-temp', 40), wIn('cond', 'Conditions', 'f-cond', 160)));
-        wxBody.push(field('Your observations (optional)', h('textarea', { id: 'f-observed', maxlength: 300, rows: 2, placeholder: 'Gusts at the treeline, glare, birds, interference…', value: r.observed,
-            oninput: function () { r.observed = clean(this.value); touch(r); } })));
-        wxBody.push(h('div', { class: 'hint', text: 'For the log only. Use official aviation weather for go/no-go.' }));
-        add(view, panel('Weather', h('span', { class: 'chip' + (w && w.source === 'nws' && ageMin <= 90 ? ' ok' : ui.wx && ui.wx !== 'loading' ? ' bad' : ''), id: 'wx-status', text: wxChip }), wxBody));
-
-        add(view, h('div', { class: 'hint', text: 'Record created ' + localTime(new Date(r.createdAt)) + ' ' + utcOffset(new Date(r.createdAt)) + (r.tz ? ' (' + r.tz + ')' : '') + '. Flight ID ' + r.id.slice(0, 8) + '.' }));
-
-        if (editing) primary(dock, 'Back to review', backToReview, { id: 'btn-continue' });
-        else primary(dock, 'Start flight timer', function () {
-            if (!r.aircraft) { ui.aircraftReturn = 'flightsetup'; go('aircraft'); return; }
-            r.startAt = isoZ(new Date());
-            r.endAt = null;
-            touch(r);
-            go('active');
-        }, { id: 'btn-start-timer', big: true });
-
-        // first visit: capture location automatically (the permission prompt appears in context)
-        if (!editing && !r.startAt) {
-            if (!loc && !ui.gps) getPosition(r);
-            else if (loc && loc.lat != null && !w && !ui.wx) getWeather(r);
-        }
+        }, { id: 'btn-continue', big: !fromReview() });
     };
 
     // ---------- Screen 4: Active flight ----------
     VIEWS.active = function (top, view, dock) {
         var r = cur();
         if (!r) { go('home'); return; }
-        if (!r.startAt) { go('flightsetup'); return; }
+        if (!r.startAt) { go('preflight'); return; }
         if (r.endAt) { go('outcome'); return; }
         header(top, 'Flight in progress', null, 'active');
         var t = h('div', { class: 'timer', id: 'timer', role: 'timer', 'aria-live': 'off' });
@@ -1162,15 +1201,15 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         add(view, h('section', { class: 'panel' },
             h('div', { class: 'rec' }, h('i', { 'aria-hidden': 'true' }), 'Flight timer running'),
             t,
-            h('div', { class: 'hint', text: 'Started ' + localTime(new Date(r.startAt)) + ' (' + utcOffset(new Date(r.startAt)) + '). Elapsed time is calculated from the start time, so it stays correct if you leave the app.' })), long);
+            h('div', { class: 'hint', text: 'Started ' + fmtTime(new Date(r.startAt)) + ' (' + utcOffset(new Date(r.startAt)) + '). Elapsed time is calculated from the start time, so it stays correct if you leave the app.' })), long);
         add(view, panel('Flight', null, h('dl', { class: 'review' },
             h('dt', { text: 'Aircraft' }), h('dd', { text: r.aircraft ? r.aircraft.model + ' · ' + (r.aircraft.serial || '—') : '—' }),
             h('dt', { text: 'Mission' }), h('dd', { text: r.mission || '—' }),
             h('dt', { text: 'Site' }), h('dd', { text: r.site || '—' }))));
         add(view, h('div', { class: 'hint', text: 'This is a logging timer only. It doesn’t connect to the aircraft or detect takeoff and landing.' }));
         add(view, h('button', { class: 'link-btn left', type: 'button', id: 'btn-undo-start', onclick: function () {
-            sheet('Started by mistake?', h('p', { text: 'Clears the start time and returns to flight setup.' }),
-                [{ label: 'Keep timer running', primary: true }, { label: 'Clear start time', danger: true, fn: function () { r.startAt = null; touch(r); go('flightsetup'); } }]);
+            sheet('Started by mistake?', h('p', { text: 'Clears the start time and returns to the preflight checklist.' }),
+                [{ label: 'Keep timer running', primary: true }, { label: 'Clear start time', danger: true, fn: function () { r.startAt = null; touch(r); go('preflight'); } }]);
         } }, 'Started by mistake?'));
         tick();
         ui.timer = setInterval(tick, 1000);
@@ -1184,7 +1223,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             };
             if (ms <= LONG_FLIGHT_MIN * 60000) { finish(isoZ(now)); return; }
             var inp = h('input', { type: 'datetime-local', id: 'f-actual-end', value: toLocalInput(isoZ(now)), min: toLocalInput(r.startAt), max: toLocalInput(isoZ(now)) });
-            var badEnd = function () { sheet('Check the end time', h('p', { text: 'The end time must be after ' + localTime(new Date(r.startAt)) + ' and not in the future.' }), [{ label: 'OK', primary: true }]); };
+            var badEnd = function () { sheet('Check the end time', h('p', { text: 'The end time must be after ' + fmtTime(new Date(r.startAt)) + ' and not in the future.' }), [{ label: 'OK', primary: true }]); };
             sheet('Confirm the end time', [h('p', { text: 'The timer shows ' + fmtDur(ms) + '. When did the flight actually end?' }), field('Actual end', inp)],
                 [{ label: 'It ended just now', primary: true, fn: function () { finish(isoZ(now)); } },
                  { label: 'Use the time above', fn: function () {
@@ -1303,8 +1342,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             var it = item(r[key], d.id), cls = it.s === 'pass' ? 'pass' : it.s === 'issue' ? 'issue' : it.s === 'na' ? '' : 'none';
             return h('li', null, h('span', { class: 'st ' + cls, text: stLabel(it.s) }),
                 h('span', null, d.label,
-                    it.note && (it.s === 'issue' || wasIssue(it)) ? h('span', { class: 'hint', text: ' – ' + it.note }) : null,
-                    it.s !== 'issue' && wasIssue(it) ? tag('corrected', 'issue fixed') : null,
+                    it.note ? h('span', { class: 'hint', text: ' – ' + it.note }) : null,
                     key === 'pre' && changedAfterStart(r, it) ? tag('corrected', 'changed after start') : null));
         }));
     }
@@ -1322,26 +1360,28 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
 
         var dm = durMin(r), loc = r.location, w = r.weather;
         var corrected = function (fld) { return r.corrections.some(function (c) { return c.field === fld; }) ? tag('corrected', 'corrected') : null; };
-        add(view, panel('Flight', editBtn('flightsetup', 'edit-setup'), h('dl', { class: 'review', id: 'review-flight' },
-            h('dt', { text: 'Aircraft' }), h('dd', null, r.aircraft ? r.aircraft.model + ' · ' + (r.aircraft.serial || '—') : tag('missing', 'missing')),
+        add(view, panel('Flight', editBtn('home', 'edit-setup'), h('dl', { class: 'review', id: 'review-flight' },
+            h('dt', { text: 'Aircraft' }), h('dd', null, r.aircraft ? aircraftName(r.aircraft) + ' · ' + (r.aircraft.serial || '—') : tag('missing', 'missing')),
+            h('dt', { text: 'Pilot' }), h('dd', null, r.pilot || '—'),
             h('dt', { text: 'Mission' }), h('dd', null, r.mission || tag('missing', 'not set')),
             h('dt', { text: 'Site' }), h('dd', null, r.site || '—', r.card ? ' · ' + r.card : ''),
             r.batteries ? [h('dt', { text: 'Batteries' }), h('dd', { text: r.batteries })] : null,
-            r.observer ? [h('dt', { text: 'Observer' }), h('dd', { text: r.observer })] : null)));
+            r.observer ? [h('dt', { text: 'Spotter' }), h('dd', { text: r.observer })] : null)));
         add(view, panel('Time', h('button', { class: 'link-btn', type: 'button', id: 'edit-times', onclick: editTimes }, 'Correct'), h('dl', { class: 'review', id: 'review-time' },
             h('dt', { text: 'Date' }), h('dd', { text: r.startAt ? localDate(new Date(r.startAt)) : '—' }),
-            h('dt', { text: 'Start' }), h('dd', null, r.startAt ? localTime(new Date(r.startAt)) + ' ' + utcOffset(new Date(r.startAt)) : tag('missing', 'missing'), r.startAt ? tag('captured', 'tapped') : null, corrected('Start')),
-            h('dt', { text: 'End' }), h('dd', null, r.endAt ? localTime(new Date(r.endAt)) + ' ' + utcOffset(new Date(r.endAt)) : tag('missing', 'missing'), r.endAt ? tag('captured', 'tapped') : null, corrected('End')),
+            h('dt', { text: 'Start' }), h('dd', null, r.startAt ? fmtTime(new Date(r.startAt)) + ' ' + utcOffset(new Date(r.startAt)) : tag('missing', 'missing'), r.startAt ? tag('captured', 'tapped') : null, corrected('Start')),
+            h('dt', { text: 'End' }), h('dd', null, r.endAt ? fmtTime(new Date(r.endAt)) + ' ' + utcOffset(new Date(r.endAt)) : tag('missing', 'missing'), r.endAt ? tag('captured', 'tapped') : null, corrected('End')),
             h('dt', { text: 'Duration' }), h('dd', { id: 'review-duration' }, dm == null ? '—' : fmtDur(dm * 60000), dm != null ? tag('', 'calculated') : null))));
-        add(view, panel('Location & weather', editBtn('flightsetup', 'edit-loc'), h('dl', { class: 'review', id: 'review-loc' },
+        add(view, panel('Location & weather', editBtn('home', 'edit-loc'), h('dl', { class: 'review', id: 'review-loc' },
             h('dt', { text: 'Position' }), h('dd', null,
                 !loc || loc.source === 'none' ? tag('missing', 'not recorded') : [loc.lat + ', ' + loc.lng,
                     loc.source === 'phone' ? [' ±' + Math.round(loc.acc) + ' m', tag('captured', 'phone GPS')] : tag('', 'entered')]),
             h('dt', { text: 'Wind' }), h('dd', null, (w && w.wind) || tag('missing', 'unavailable')),
             h('dt', { text: 'Temp' }), h('dd', null, (w && w.temp) || tag('missing', 'unavailable')),
+            h('dt', { text: 'Humidity' }), h('dd', null, (w && w.humidity) || tag('missing', 'unavailable')),
             h('dt', { text: 'Conditions' }), h('dd', null, (w && w.cond) || '—'),
-            h('dt', { text: 'Source' }), h('dd', null, !w ? tag('missing', 'unavailable') : w.source === 'nws' ? ['NWS ' + w.station + (w.observedAt ? ' at ' + localTime(new Date(w.observedAt)) : ''), tag('captured', 'observed')] : tag('', 'entered by you')),
-            r.observed ? [h('dt', { text: 'Observed' }), h('dd', { text: r.observed })] : null)));
+            h('dt', { text: 'Source' }), h('dd', null, !w ? tag('missing', 'unavailable') : w.source === 'nws' ? ['NWS ' + w.station + (w.observedAt ? ' at ' + fmtTime(new Date(w.observedAt)) : ''), tag('captured', 'observed')] : tag('', 'entered by you')),
+            r.observed ? [h('dt', { text: 'Conditions noted' }), h('dd', { text: r.observed })] : null)));
         var pc = counts(r, 'pre', PRE);
         add(view, panel('Preflight · ' + pc.pass + ' pass, ' + pc.issue + ' issue, ' + pc.na + ' N/A, ' + pc.none + ' unchecked', editBtn('preflight', 'edit-pre'), checklistReview(r, 'pre', PRE, 'review-pre')));
         add(view, panel('Postflight', editBtn('outcome', 'edit-outcome'), h('dl', { class: 'review', id: 'review-outcome' },
@@ -1351,7 +1391,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             h('dt', { text: 'Max alt' }), h('dd', null, r.altitude ? [r.altitude + ' m AGL', tag('estimated', 'estimate')] : '—'))));
         add(view, panel('Inspection', editBtn('inspect', 'edit-inspect'), checklistReview(r, 'post', POST, 'review-post')));
         add(view, panel('Flight notes', null, h('textarea', { id: 'f-notes', 'aria-label': 'Flight notes', maxlength: 1000, rows: 4, value: r.notes,
-            placeholder: 'Record anything worth remembering about this flight, including mission results, unusual behavior, environmental conditions, or lessons learned.',
+            placeholder: 'Procedures and maneuvers flown, mission results, unusual behavior, environmental conditions, or lessons learned.',
             oninput: function () { r.notes = this.value; touch(r); } })));
 
         var fs = formStatus();
@@ -1423,7 +1463,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var r = flights[ui.handoffId];
         if (!r) { go('home'); return; }
         header(top, 'Submit to form', null);
-        var summary = (r.aircraft ? r.aircraft.serial || r.aircraft.model : '') + ' · ' + (r.startAt ? localDate(new Date(r.startAt)) + ' ' + localTime(new Date(r.startAt)) : '') + ' · Flight ID ' + r.id.slice(0, 8);
+        var summary = (r.aircraft ? r.aircraft.serial || r.aircraft.model : '') + ' · ' + (r.startAt ? localDate(new Date(r.startAt)) + ' ' + fmtTime(new Date(r.startAt)) : '') + ' · Flight ID ' + r.id.slice(0, 8);
         if (r.status === 'pending') {
             add(view, h('div', { class: 'banner warn', id: 'pending-banner' }, h('strong', { text: 'Saved on this phone, not submitted yet.' }),
                 h('div', { text: navigator.onLine ? 'Open the form to submit it.' : 'No signal, so the form can’t open. Submit it when you’re back online; it waits on the Home screen.' })));
@@ -1452,10 +1492,8 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     // ---------- Screen 9: Done / repeated flights ----------
     function startNext() {
         // stable preferences live in prefs; everything flight-specific starts fresh
-        ui.gps = ''; ui.wx = ''; ui.showManualLoc = false; ui.openHelp = {}; ui.handoffId = null; ui.lastDone = null;
-        if (cur()) { go(cur().step); return; }
-        newRecord();
-        go('preflight');
+        ui.gps = ''; ui.wx = ''; ui.showManualLoc = false; ui.wxManualOpen = false; ui.openHelp = {}; ui.handoffId = null; ui.lastDone = null;
+        go('home');
     }
     VIEWS.done = function (top, view, dock) {
         var d = ui.lastDone;
@@ -1534,7 +1572,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
                 sheet('Clear everything on this phone?', h('p', { text: 'Removes the form link, aircraft list, preferences' + (n ? ' and ' + n + ' unsubmitted flight' + (n > 1 ? 's, which will be lost' : ', which will be lost') : '') + '.' }),
                     [{ label: 'Cancel', primary: true }, { label: 'Clear everything', danger: true, fn: function () {
                         [K.settings, K.prefs, K.flights, K.current, K.carry].forEach(store.del);
-                        settings = { url: '', models: ['M1'] }; prefs = { aircraft: [], selected: null, mission: '', site: '', observer: '' };
+                        settings = { url: '', models: ['M1'] }; prefs = { aircraft: [], selected: null, mission: '', site: '', observer: '', pilot: '' };
                         flights = {}; carry = {}; currentId = null;
                         render();
                     } }]);
@@ -1582,10 +1620,11 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     importFromHash();
     migrateOldDraft();
     if (currentId && !flights[currentId]) currentId = null;
+    Object.keys(flights).forEach(function (k) { if (flights[k].step === 'flightsetup') flights[k].step = 'home'; });
     var inHandoff = Object.keys(flights).map(function (k) { return flights[k]; }).filter(function (r) { return r.status === 'handoff'; })
         .sort(function (a, b) { return a.handoffAt < b.handoffAt ? 1 : -1; })[0];
     if (inHandoff) { ui.handoffId = inHandoff.id; ui.view = 'handoff'; }
-    else if (cur() && cur().step) ui.view = cur().step; // resume where the pilot left off
+    else if (cur() && STEPS.indexOf(cur().step) !== -1) ui.view = cur().step; // resume where the pilot left off
     render();
 
     if ('serviceWorker' in navigator && window.isSecureContext) {
