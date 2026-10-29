@@ -1,6 +1,6 @@
 'use strict';
 // Caches only the app page so it opens without signal. Never touches the weather API or the form.
-const CACHE = 'field-form-57fbb92';
+const CACHE = 'field-form-98470e5';
 const PAGE = './';
 
 self.addEventListener('install', (e) => {

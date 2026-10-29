@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-qmpb7ut50zo28h+qeEKbix8626M3gEvq9VolX3ZBhWk='; style-src 'sha256-R7lnhUtEpbI4mLdr3Jiery1hSntc/WKU6jZRDWlrczc='; font-src data:; img-src data:; connect-src https://api.weather.gov; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-cdNcmLbxCSp+/0bPA4FGPIKbqaFbveDubJGKaXqMm70='; style-src 'sha256-R7lnhUtEpbI4mLdr3Jiery1hSntc/WKU6jZRDWlrczc='; font-src data:; img-src data:; connect-src https://api.weather.gov; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -253,7 +253,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     // =====================================================================
     // Config
     // =====================================================================
-    var BUILD = '57fbb92';
+    var BUILD = '98470e5';
     // Hosts a pre-filled link may point at. Prevents a tampered setup link from sending entries elsewhere.
     var FORM_HOSTS = ['forms.office.com', 'forms.office365.us', 'forms.osi.office365.us', 'forms.microsoft.com', 'forms.cloud.microsoft'];
     // Form codes. req = the form must have it; rec = recommended (Setup and Review warn when missing).
@@ -660,10 +660,10 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var loc = r.location, w = r.weather || {}, dm = durMin(r);
         var gps = !loc || loc.source === 'none' ? 'Not recorded'
             : loc.source === 'manual' ? 'Entered by pilot'
-            : 'Phone GPS ±' + Math.round(loc.acc) + ' m at ' + loc.at + ' (phone location, not verified takeoff point)';
+            : 'Phone GPS ±' + Math.round(loc.acc) + ' m, ' + loc.at;
         var wxsrc = !r.weather || r.weather.source === 'none' ? 'Unavailable'
             : r.weather.source === 'pilot' ? 'Entered by pilot'
-            : 'NWS station ' + w.station + ', observed ' + w.observedAt;
+            : 'NWS ' + w.station + ', ' + w.observedAt;
         var open = openItems(r).map(function (o) { return o.text; }).join('; ');
         var inc = '';
         var what = r.outcome === 'normal' ? clean(r.incident.what) : '';
@@ -759,7 +759,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         out.source = 'nws';
         return out;
     }
-    function getWeather(r) {
+    function getWeather(r, force) {
         var loc = r.location;
         if (!loc || loc.lat == null) return;
         // ~1 km precision is plenty for the nearest station and avoids sending exact site coordinates
@@ -781,7 +781,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             .then(function (res) {
                 if (cur() !== r) return;
                 var w = formatWx(res.o.properties || {}, res.id);
-                if (r.weather && r.weather.source === 'pilot') r.weather.auto = w; // keep the pilot's edit
+                if (!force && r.weather && r.weather.source === 'pilot') r.weather.auto = w; // keep the pilot's edit unless they asked for a fresh reading
                 else r.weather = w;
                 ui.wx = '';
                 touch(r);
@@ -937,7 +937,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             ro('Conditions', 'wx-cond-v', w && w.cond, null),
             h('div', { class: 'readout wide' }, h('div', { class: 'sub', id: 'wx-src', text: w && w.source === 'nws' ? 'NWS station ' + w.station + (w.observedAt ? ', observed ' + fmtTime(new Date(w.observedAt)) + ' (' + ageMin + ' min ago)' : '') : w && w.source === 'pilot' ? 'Entered by you' : 'Nearest National Weather Service station observation. Not a forecast.' })))];
         if (ageMin != null && ageMin > 90 && w.source === 'nws') body.push(h('div', { class: 'hint warn', text: 'This observation is over 90 minutes old.' }));
-        if (loc && loc.lat != null && ui.wx && ui.wx !== 'loading') body.push(h('button', { class: 'link-btn left', type: 'button', id: 'btn-wx-retry', onclick: function () { getWeather(r); } }, 'Try weather again'));
+        if (loc && loc.lat != null && ui.wx !== 'loading') body.push(h('button', { class: 'link-btn left', type: 'button', id: 'btn-wx-refresh', onclick: function () { getWeather(r, true); } }, w && w.source === 'pilot' ? 'Replace with latest observation' : ui.wx ? 'Try weather again' : 'Update weather'));
         var wIn = function (k, label, id, max) {
             return field(label, h('input', { class: 'mono', id: id, maxlength: max, autocomplete: 'off', value: (w && w[k]) || '', oninput: function () {
                 var cw = r.weather;
@@ -1454,9 +1454,38 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         if (!navigator.onLine) { r.status = 'pending'; touch(r); go('handoff'); return; }
         openForm(r);
     }
+    // Microsoft can't sign a pilot in through a long pre-filled link (AADSTS90015): Forms packs the whole
+    // link into the sign-in request, which is capped at about 2048 characters. Signing in once with the
+    // plain form link sets the session, and pre-filled links then open without the sign-in step.
+    function plainFormUrl() {
+        var u = new URL(formStatus().p.url), id = u.searchParams.get('id');
+        return u.origin + u.pathname + (id ? '?id=' + encodeURIComponent(id) : '');
+    }
+    function signInToForms(r) {
+        settings.signedInAt = isoZ(new Date());
+        store.set(K.settings, settings);
+        if (r) { r.status = 'pending'; r.awaitingSignIn = true; ui.handoffId = r.id; touch(r); } // reopen this log when the pilot comes back
+        location.href = plainFormUrl();
+    }
+    function signInHelp(r) {
+        return h('div', { class: 'banner warn', id: 'signin-help' },
+            h('strong', { text: 'Seeing \u201cAADSTS90015: Requested query string is too long\u201d?' }),
+            h('div', { text: 'Microsoft can\u2019t sign you in through the long pre-filled link. Sign in with the plain form link, come back here, then open the form again. The log stays saved.' }),
+            h('button', { class: 'link-btn', type: 'button', id: 'btn-signin', onclick: function () { signInToForms(r); } }, 'Sign in to Microsoft Forms'));
+    }
     function openForm(r) {
+        if (!settings.signedInAt) {
+            r.status = 'pending'; ui.handoffId = r.id; touch(r);
+            ui.view = 'handoff'; render();
+            sheet('Sign in to Microsoft Forms first', h('p', { text: 'Do this once on this phone. Microsoft can\u2019t sign you in through the long pre-filled link, so sign in with the plain form, then come back here and tap Open form. The log stays saved.' }),
+                [{ label: 'Sign in to Microsoft Forms', primary: true, fn: function () { signInToForms(r); } },
+                 { label: 'I\u2019m already signed in', fn: function () { settings.signedInAt = isoZ(new Date()); store.set(K.settings, settings); openForm(r); } },
+                 { label: 'Cancel' }]);
+            return;
+        }
         var url = buildUrl(formStatus().p.url, valuesForForm(r));
         r.status = 'handoff';
+        r.awaitingSignIn = false;
         r.handoffAt = isoZ(new Date());
         r.attempts = (r.attempts || 0) + 1;
         ui.handoffId = r.id;
@@ -1490,6 +1519,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
                 h('div', { text: navigator.onLine ? 'Open the form to submit it.' : 'No signal, so the form can’t open. Submit it when you’re back online; it waits on the Home screen.' })));
             add(view, h('div', { class: 'hint', text: summary }));
             add(view, h('button', { class: 'link-btn left', type: 'button', id: 'btn-next-pending', onclick: startNext }, 'Start next flight'));
+            if (navigator.onLine && settings.signedInAt) add(view, signInHelp(r));
             primary(dock, 'Open form', function () {
                 if (!navigator.onLine) { sheet('Still offline', h('p', { text: 'The phone has no connection. The log stays saved here.' }), [{ label: 'OK', primary: true }]); return; }
                 openForm(r);
@@ -1507,6 +1537,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
                 if (cur() && cur() !== r) { sheet('Finish the current flight first', h('p', { text: 'Another flight is in progress. Finish or discard it, then change this one.' }), [{ label: 'OK', primary: true }]); return; }
                 r.status = 'draft'; r.step = 'review'; currentId = r.id; ui.handoffId = null; touch(r); go('review');
             } }, 'Change something')));
+        add(view, signInHelp(r));
         primary(dock, 'Yes, it was submitted', function () { confirmSubmitted(r); }, { id: 'btn-submitted', big: true });
     };
 
@@ -1576,6 +1607,9 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             field('Aircraft models (comma-separated)', models)));
         checkSetupUrl(url.value, msg, toks);
         var shareMsg = h('div', { class: 'hint', id: 'share-msg' });
+        if (formStatus().ok) add(view, panel('Sign in to Microsoft Forms', settings.signedInAt ? h('span', { class: 'chip ok', text: 'done on this phone' }) : null,
+            h('div', { class: 'hint', text: 'Do this once per phone, and again if Microsoft signs you out. Pre-filled links can\u2019t take you through Microsoft sign-in (error AADSTS90015), so sign in with the plain form first.' }),
+            h('button', { class: 'link-btn left', type: 'button', id: 'btn-signin-setup', onclick: function () { signInToForms(null); } }, 'Open the form to sign in')));
         add(view, panel('Share with other pilots', null,
             h('div', { class: 'hint', text: 'This makes a link that sets up another phone with the same form. Send it only through company channels.' }),
             h('button', { class: 'link-btn left', type: 'button', id: 'btn-share', onclick: function () {
@@ -1642,7 +1676,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     migrateOldDraft();
     if (currentId && !flights[currentId]) currentId = null;
     Object.keys(flights).forEach(function (k) { if (flights[k].step === 'flightsetup') flights[k].step = 'home'; });
-    var inHandoff = Object.keys(flights).map(function (k) { return flights[k]; }).filter(function (r) { return r.status === 'handoff'; })
+    var inHandoff = Object.keys(flights).map(function (k) { return flights[k]; }).filter(function (r) { return r.status === 'handoff' || r.awaitingSignIn; })
         .sort(function (a, b) { return a.handoffAt < b.handoffAt ? 1 : -1; })[0];
     if (inHandoff) { ui.handoffId = inHandoff.id; ui.view = 'handoff'; }
     else if (cur() && STEPS.indexOf(cur().step) !== -1) ui.view = cur().step; // resume where the pilot left off
