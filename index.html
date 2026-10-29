@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-KuzXe8q450E8yZq8h6jEyI/BxOxDmn8h8pXmgvpNn54='; style-src 'sha256-f8fzDG3Hnw0NeJeHGKHeZg/gjcZB7t01s/vmcCB4PaA='; font-src data:; img-src data:; connect-src https://api.weather.gov; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-qmpb7ut50zo28h+qeEKbix8626M3gEvq9VolX3ZBhWk='; style-src 'sha256-R7lnhUtEpbI4mLdr3Jiery1hSntc/WKU6jZRDWlrczc='; font-src data:; img-src data:; connect-src https://api.weather.gov; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -89,6 +89,7 @@ header.top { display: flex; align-items: center; justify-content: space-between;
 .chip.bad { color: var(--bad); }
 .link-btn { border: 0; background: none; color: var(--accent); font: inherit; font-size: 14px; font-weight: 600; padding: 6px 0 6px 8px; min-height: 40px; }
 .link-btn.left { padding-left: 0; }
+a.link-btn { display: inline-flex; align-items: center; text-decoration: none; }
 .link-btn:disabled { color: var(--muted); }
 .actions-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
 
@@ -252,7 +253,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     // =====================================================================
     // Config
     // =====================================================================
-    var BUILD = 'c3dfcea';
+    var BUILD = '57fbb92';
     // Hosts a pre-filled link may point at. Prevents a tampered setup link from sending entries elsewhere.
     var FORM_HOSTS = ['forms.office.com', 'forms.office365.us', 'forms.osi.office365.us', 'forms.microsoft.com', 'forms.cloud.microsoft'];
     // Form codes. req = the form must have it; rec = recommended (Setup and Review warn when missing).
@@ -301,15 +302,16 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         { id: 'fc', short: 'FC/firmware', label: 'Flight controller / firmware checked', crit: true, group: 'Control & failsafe', help: 'Expected firmware and parameters loaded; no arming warnings.' },
         { id: 'rc', short: 'RC/failsafe', label: 'RC link / failsafe checked', crit: true, help: 'Controller charged and powered on, apps running, link bound, range check if required, failsafe action set.' },
         { id: 'rth', short: 'RTH/RTL', label: 'Return-to-home / RTL settings', crit: true, na: true, help: 'Home point and return altitude suit this site’s obstacles. N/A if the aircraft has no return-to-home.' },
-        { id: 'site', short: 'Airspace/site/wx', label: 'Airspace / site / weather reviewed', crit: true, group: 'Operation', help: 'Authorization if required, NOTAMs/TFRs, site hazards, people nearby, weather within limits.' }
+        { id: 'notam', short: 'NOTAMs/TFRs/authorization', label: 'FAA NOTAMs / TFRs checked, authorization obtained if required', crit: true, group: 'Operation',
+            help: 'Check NOTAMs and TFRs for this location and time. In controlled airspace, have LAANC or other FAA authorization before flying.',
+            links: [['FAA NOTAM Search', 'https://notams.aim.faa.gov/notamSearch/'], ['FAA TFR list', 'https://tfr.faa.gov/'], ['B4UFLY', 'https://www.faa.gov/uas/getting_started/b4ufly']] },
+        { id: 'site', short: 'Site/people/wx', label: 'Site, people & weather reviewed', crit: true, help: 'Site hazards and obstacles, people nearby and standoff distance, weather within your and the aircraft\u2019s limits.' }
     ];
     var POST = [
         { id: 'battery', short: 'Battery', label: 'Battery disconnected / inspected', link: ['battery'] },
-        { id: 'props', short: 'Props/frame', label: 'Propellers / frame inspected', link: ['props', 'hard'] },
+        { id: 'props', short: 'Props/frame', label: 'Propellers / frame / landing gear inspected', help: 'Chips, cracks or loose props; cracked arms or shell; landing gear and any signs of a hard landing.', link: ['props', 'hard'] },
         { id: 'motors', short: 'Motors/ESCs', label: 'Motors / ESCs checked for heat or unusual behavior', link: ['motor'] },
-        { id: 'payload', short: 'Payload', label: 'Payload and accessories inspected', na: true, link: ['payload'] },
-        { id: 'damage', short: 'Damage', label: 'Aircraft damage or abnormal condition assessed', link: ['hard'] },
-        { id: 'maint', short: 'Maintenance', label: 'Maintenance or repair needs identified', help: 'Mark Issue if anything needs maintenance or repair before the next flight.', link: [] }
+        { id: 'payload', short: 'Payload', label: 'Payload and accessories inspected', na: true, link: ['payload'] }
     ];
     var OUTCOMES = [
         { id: 'normal', label: 'Completed normally' },
@@ -474,13 +476,13 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var r = {
             v: 2, id: uuid(), createdAt: isoZ(now), tz: tzName(), status: 'draft', step: 'home',
             aircraft: a ? { manufacturer: a.manufacturer || '', model: a.model, serial: a.serial } : null,
-            mission: prefs.mission || '', site: prefs.site || '', observer: prefs.observer || '', pilot: prefs.pilot || '',
+            mission: prefs.mission || '', missionOther: prefs.missionOther || '', site: prefs.site || '', observer: prefs.observer || '', pilot: '',
             card: '', batteries: '', observed: '',
             location: null, weather: null,
             pre: {}, preAck: null,
             carry: c ? { serial: a.serial, text: c.text, from: c.at, resolvedAt: c.resolvedAt || null } : null,
             startAt: null, endAt: null, corrections: [],
-            outcome: '', issues: [], issueNotes: {}, incident: { what: '', harm: '' },
+            outcome: '', outcomeNote: '', issues: [], issueNotes: {}, incident: { what: '', harm: '' },
             post: {}, altitude: '', notes: '', returnTo: null, attempts: 0
         };
         if (c && c.resolvedAt) delete carry[a.serial];
@@ -594,7 +596,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         POST.forEach(function (d) {
             var it = item(r.post, d.id);
             if (it.s !== 'issue') return;
-            var crit = d.id === 'damage' || d.id === 'maint';
+            var crit = true; // anything found in the inspection needs attention before the next flight
             var linked = d.link.filter(function (x) { return byIssue[x]; })[0];
             if (linked) { // same problem reported after the flight: one line, not two
                 var o = byIssue[linked];
@@ -618,6 +620,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         if (!r.aircraft || !r.aircraft.model) f.missing.push({ text: 'Aircraft', step: 'home' });
         if (!r.startAt || !r.endAt) f.missing.push({ text: 'Flight start and end times', step: 'times' });
         if (!r.outcome) f.missing.push({ text: 'How the flight went', step: 'outcome' });
+        else if (r.outcome !== 'normal' && !clean(r.outcomeNote)) f.missing.push({ text: 'Explanation of how the flight went', step: 'outcome' });
         if (!formStatus().ok) f.missing.push({ text: 'Microsoft Form link (Setup)', step: 'settings' });
         var now = Date.now();
         if (r.startAt && r.endAt && new Date(r.endAt) <= new Date(r.startAt)) f.block.push({ text: 'End time is not after start time.', step: 'times' });
@@ -626,6 +629,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var dm = durMin(r);
         if (dm != null && dm > 12 * 60) f.warn.push({ text: 'Duration is over 12 hours. Check the times.', step: 'times' });
         if (!r.mission) f.warn.push({ text: 'Mission type not set.', step: 'home' });
+        else if (r.mission === 'Other' && !r.missionOther) f.warn.push({ text: 'Mission is \u201cOther\u201d but not described.', step: 'home' });
         var c = counts(r, 'pre', PRE);
         if (c.none && !(r.preAck && r.preAck.migrated)) f.warn.push({ text: c.none + ' preflight item' + (c.none > 1 ? 's' : '') + ' not checked.', step: 'preflight' });
         if (PRE.some(function (d) { return changedAfterStart(r, item(r.pre, d.id)); })) f.warn.push({ text: 'Preflight results were changed after the flight started.', step: 'preflight' });
@@ -662,9 +666,10 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             : 'NWS station ' + w.station + ', observed ' + w.observedAt;
         var open = openItems(r).map(function (o) { return o.text; }).join('; ');
         var inc = '';
-        if (r.incident.what || r.incident.harm) {
+        var what = r.outcome === 'normal' ? clean(r.incident.what) : '';
+        if (what || r.incident.harm) {
             inc = 'Injury/third-party damage: ' + ({ yes: 'Yes', no: 'No', unknown: 'Unknown' }[r.incident.harm] || 'Not answered') +
-                (clean(r.incident.what) ? '. ' + clean(r.incident.what) : '');
+                (what ? '. ' + what : '');
         }
         var corr = r.corrections.map(function (c) { return c.field + ' corrected from ' + c.from + ' to ' + c.to + ' at ' + c.at; }).join('; ');
         return {
@@ -675,9 +680,9 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             duration: dm == null ? '' : String(Math.round(dm * 10) / 10),
             lat: loc && loc.lat != null ? String(loc.lat) : '', lng: loc && loc.lng != null ? String(loc.lng) : '', gps: gps,
             site: r.site, model: r.aircraft ? r.aircraft.model : '', serial: r.aircraft ? r.aircraft.serial : '',
-            manufacturer: r.aircraft ? r.aircraft.manufacturer || '' : '', pilot: r.pilot || '',
-            mission: r.mission, card: r.card, batteries: r.batteries, observer: r.observer,
-            altitude: r.altitude, outcome: (byId(OUTCOMES, r.outcome) || {}).label || '',
+            manufacturer: r.aircraft ? r.aircraft.manufacturer || '' : '', pilot: r.pilot || 'Same as submitter',
+            mission: missionText(r), card: r.card, batteries: r.batteries, observer: r.observer,
+            altitude: r.altitude, outcome: outcomeText(r),
             issues: issueText(r), incident: inc,
             preflight: checklistText(r, 'pre', PRE), postcheck: checklistText(r, 'post', POST),
             open: open || 'None',
@@ -868,6 +873,8 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     var VIEWS = {};
 
     // ---------- Screen 1: Home = flight setup (aircraft, crew, mission, location, weather) ----------
+    function outcomeText(r) { var l = (byId(OUTCOMES, r.outcome) || {}).label || ''; var n = r.outcome !== 'normal' ? clean(r.outcomeNote) : ''; return l + (l && n ? ' \u2013 ' + n : ''); }
+    function missionText(r) { return r.mission === 'Other' && r.missionOther ? 'Other: ' + r.missionOther : r.mission || ''; }
     function aircraftName(a) { return a ? [a.manufacturer, a.model].filter(Boolean).join(' ') : ''; }
     function locPanel(r) {
         var loc = r.location;
@@ -1009,17 +1016,25 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             field('Battery IDs', h('input', { class: 'mono', id: 'f-batteries', maxlength: 120, autocomplete: 'off', autocapitalize: 'characters', placeholder: 'B12, B13', value: r.batteries,
                 oninput: function () { r.batteries = clean(this.value); touch(r); } }))));
         add(view, panel('Crew', null, h('div', { class: 'row2' },
-            field('Pilot in command', h('input', { id: 'f-pilot', maxlength: 80, autocomplete: 'off', value: r.pilot,
-                oninput: function () { r.pilot = clean(this.value); prefs.pilot = r.pilot; touch(r); } })),
+            field('Pilot in command', h('input', { id: 'f-pilot', maxlength: 80, autocomplete: 'off', value: r.pilot, placeholder: 'If not you',
+                oninput: function () { r.pilot = clean(this.value); touch(r); } })),
             field('Spotter / visual observer', h('input', { id: 'f-observer', maxlength: 80, autocomplete: 'off', value: r.observer,
-                oninput: function () { r.observer = clean(this.value); prefs.observer = r.observer; touch(r); } })))));
+                oninput: function () { r.observer = clean(this.value); prefs.observer = r.observer; touch(r); } }))),
+            h('div', { class: 'hint', text: 'Skip Pilot in command if you\u2019re the pilot: the form already records who submits it.' })));
+        var otherIn = h('input', { id: 'f-mission-other', maxlength: 80, autocomplete: 'off', placeholder: 'What is the mission?', value: r.missionOther || '',
+            oninput: function () { r.missionOther = clean(this.value); prefs.missionOther = r.missionOther; touch(r); } });
+        var otherBox = field('Describe the mission', otherIn);
+        otherBox.classList.toggle('hidden', r.mission !== 'Other');
         add(view, panel('Mission', null,
             h('div', { class: 'chips', role: 'radiogroup', 'aria-label': 'Mission type' }, MISSIONS.map(function (m) {
                 return h('button', { class: 'opt', type: 'button', role: 'radio', 'aria-checked': String(r.mission === m), onclick: function (e) {
                     r.mission = m; prefs.mission = m; touch(r);
                     e.currentTarget.parentNode.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', String(b === e.currentTarget)); });
+                    otherBox.classList.toggle('hidden', m !== 'Other');
+                    if (m === 'Other') otherIn.focus();
                 } }, h('span', { class: 'dot' }), m);
             })),
+            otherBox,
             field('Site', h('input', { id: 'f-site', maxlength: 120, autocomplete: 'off', placeholder: 'e.g. Riverside Park, north field', value: r.site,
                 oninput: function () { r.site = clean(this.value); prefs.site = r.site; touch(r); } })),
             field('Project / task card', h('input', { class: 'mono', id: 'f-card', maxlength: 60, autocomplete: 'off', autocapitalize: 'characters', value: r.card,
@@ -1122,6 +1137,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
                     d.help ? h('button', { class: 'ck-btn info', type: 'button', 'aria-expanded': String(!!ui.openHelp[sid]), 'aria-label': 'About ' + d.label, onclick: function () { ui.openHelp[sid] = !ui.openHelp[sid]; render(); } }, '?') : null)));
         var more = [];
         if (ui.openHelp[sid] && d.help) more.push(h('div', { class: 'hint', text: d.help }));
+        if (d.links) more.push(h('div', { class: 'actions-row' }, d.links.map(function (l) { return h('a', { class: 'link-btn left', href: l[1], target: '_blank', rel: 'noopener noreferrer', text: l[0] + ' \u2197' }); })));
         if (hintNode) more.push(hintNode);
         // the note stays visible (and logged) whenever it has text, whatever the result
         if (it.s === 'issue' || it.note) {
@@ -1204,7 +1220,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             h('div', { class: 'hint', text: 'Started ' + fmtTime(new Date(r.startAt)) + ' (' + utcOffset(new Date(r.startAt)) + '). Elapsed time is calculated from the start time, so it stays correct if you leave the app.' })), long);
         add(view, panel('Flight', null, h('dl', { class: 'review' },
             h('dt', { text: 'Aircraft' }), h('dd', { text: r.aircraft ? r.aircraft.model + ' · ' + (r.aircraft.serial || '—') : '—' }),
-            h('dt', { text: 'Mission' }), h('dd', { text: r.mission || '—' }),
+            h('dt', { text: 'Mission' }), h('dd', { text: missionText(r) || '—' }),
             h('dt', { text: 'Site' }), h('dd', { text: r.site || '—' }))));
         add(view, h('div', { class: 'hint', text: 'This is a logging timer only. It doesn’t connect to the aircraft or detect takeoff and landing.' }));
         add(view, h('button', { class: 'link-btn left', type: 'button', id: 'btn-undo-start', onclick: function () {
@@ -1244,7 +1260,10 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             h('div', { class: 'opts', role: 'radiogroup', 'aria-labelledby': 'q-outcome' }, OUTCOMES.map(function (o) {
                 return h('button', { class: 'opt ' + (o.cls || ''), type: 'button', role: 'radio', 'aria-checked': String(r.outcome === o.id), 'data-id': o.id,
                     onclick: function () { r.outcome = o.id; touch(r); render(); } }, h('span', { class: 'dot' }), o.label);
-            }))));
+            })),
+            r.outcome && r.outcome !== 'normal' ? field('What happened?', h('textarea', { id: 'f-outcome-note', maxlength: 600, rows: 3, value: r.outcomeNote || '',
+                placeholder: { issue: 'What went wrong and how you handled it', aborted: 'Why the flight was ended early', emergency: 'Sequence of events, where it came down, actions taken' }[r.outcome],
+                oninput: function () { r.outcomeNote = this.value; touch(r); } }), true) : null));
 
         var issueBox = h('section', { class: 'panel' }, h('p', { class: 'big-q', id: 'q-issues', text: 'Did you observe any aircraft issues?' }),
             h('div', { class: 'hint', text: 'Select all that apply.' }));
@@ -1274,8 +1293,9 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
                     onclick: function () { r.incident.harm = x[0]; touch(r); render(); } }, h('span', { class: 'dot' }), x[1]);
             }));
             add(view, panel('Incident report', null,
-                field('What happened?', h('textarea', { id: 'f-incident', maxlength: 600, rows: 3, value: r.incident.what, placeholder: 'Sequence of events, where it came down, actions taken',
-                    oninput: function () { r.incident.what = this.value; touch(r); } })),
+                // the outcome explanation above already covers "what happened" unless the flight was otherwise normal
+                r.outcome === 'normal' ? field('What happened?', h('textarea', { id: 'f-incident', maxlength: 600, rows: 3, value: r.incident.what, placeholder: 'Describe the hard landing or suspected damage',
+                    oninput: function () { r.incident.what = this.value; touch(r); } })) : null,
                 h('label', { class: 'f' }, h('span', { text: 'Anyone injured, or damage to property other than the aircraft?' })), harm,
                 r.incident.harm === 'yes' ? h('div', { class: 'hint bad', text: 'Under FAA Part 107, serious injury or property damage over $500 (other than the aircraft) must be reported to the FAA within 10 days. Follow your organization’s procedure.' }) : null));
         }
@@ -1294,6 +1314,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
 
         primary(dock, fromReview() ? 'Back to review' : 'Continue', function () {
             if (!r.outcome) { sheet('How did the flight go?', h('p', { text: 'Pick one answer to continue.' }), [{ label: 'OK', primary: true }]); return; }
+            if (r.outcome !== 'normal' && !clean(r.outcomeNote)) { sheet('What happened?', h('p', { text: 'Add a short explanation for anything other than a normal flight.' }), [{ label: 'OK', primary: true, fn: function () { var n = $('f-outcome-note'); if (n) n.focus(); } }]); return; }
             if (r.issues.indexOf('other') !== -1 && !clean(r.issueNotes.other || '')) { var o = $('issue-note-other'); if (o) o.focus(); return; }
             if (fromReview()) backToReview(); else go('inspect');
         }, { id: 'btn-continue' });
@@ -1362,8 +1383,8 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var corrected = function (fld) { return r.corrections.some(function (c) { return c.field === fld; }) ? tag('corrected', 'corrected') : null; };
         add(view, panel('Flight', editBtn('home', 'edit-setup'), h('dl', { class: 'review', id: 'review-flight' },
             h('dt', { text: 'Aircraft' }), h('dd', null, r.aircraft ? aircraftName(r.aircraft) + ' · ' + (r.aircraft.serial || '—') : tag('missing', 'missing')),
-            h('dt', { text: 'Pilot' }), h('dd', null, r.pilot || '—'),
-            h('dt', { text: 'Mission' }), h('dd', null, r.mission || tag('missing', 'not set')),
+            h('dt', { text: 'Pilot' }), h('dd', null, r.pilot || 'You (submitter)'),
+            h('dt', { text: 'Mission' }), h('dd', null, missionText(r) || tag('missing', 'not set')),
             h('dt', { text: 'Site' }), h('dd', null, r.site || '—', r.card ? ' · ' + r.card : ''),
             r.batteries ? [h('dt', { text: 'Batteries' }), h('dd', { text: r.batteries })] : null,
             r.observer ? [h('dt', { text: 'Spotter' }), h('dd', { text: r.observer })] : null)));
@@ -1385,7 +1406,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var pc = counts(r, 'pre', PRE);
         add(view, panel('Preflight · ' + pc.pass + ' pass, ' + pc.issue + ' issue, ' + pc.na + ' N/A, ' + pc.none + ' unchecked', editBtn('preflight', 'edit-pre'), checklistReview(r, 'pre', PRE, 'review-pre')));
         add(view, panel('Postflight', editBtn('outcome', 'edit-outcome'), h('dl', { class: 'review', id: 'review-outcome' },
-            h('dt', { text: 'Outcome' }), h('dd', null, (byId(OUTCOMES, r.outcome) || {}).label || tag('missing', 'missing')),
+            h('dt', { text: 'Outcome' }), h('dd', null, outcomeText(r) || tag('missing', 'missing')),
             h('dt', { text: 'Issues' }), h('dd', { text: issueText(r) }),
             r.incident.what || r.incident.harm ? [h('dt', { text: 'Incident' }), h('dd', { text: valuesForForm(r).incident })] : null,
             h('dt', { text: 'Max alt' }), h('dd', null, r.altitude ? [r.altitude + ' m AGL', tag('estimated', 'estimate')] : '—'))));
