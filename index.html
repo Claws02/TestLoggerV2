@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-qKsTIA+aTuhKybsmvn2el4dC4d1Kw7rMEjtWgIoYQkk='; style-src 'sha256-R7lnhUtEpbI4mLdr3Jiery1hSntc/WKU6jZRDWlrczc='; font-src data:; img-src data:; connect-src https://api.weather.gov; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-bTSceXIGrplFSlpYOmDg5iyRDK2qOAxNhP7CxewzkGg='; style-src 'sha256-r6+wRD5AnGdh6n1o/2Mkv64XVsOOPJV8cULWWud8TyQ='; font-src data:; img-src data:; connect-src https://api.weather.gov; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -207,6 +207,10 @@ dl.review dd { margin: 0; font-family: 'Plex Mono', ui-monospace, monospace; ove
     background: linear-gradient(to top, var(--bg) 70%, transparent);
 }
 .dock .inner { max-width: 528px; margin: 0 auto; display: flex; gap: 10px; }
+.dock .inner.stack { flex-direction: column; }
+.dock .inner.stack .btn { flex: 0 0 auto; width: 100%; }
+.btn.outline { background: var(--panel); color: var(--accent); border: 2px solid var(--accent); }
+.dock-spacer { height: 76px; }
 .btn {
     flex: 1; min-height: 54px; border-radius: 14px; border: 0; font: inherit; font-weight: 600; font-size: 17px;
     background: var(--accent); color: var(--accent-ink); padding: 0 14px;
@@ -253,7 +257,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     // =====================================================================
     // Config
     // =====================================================================
-    var BUILD = '1a4541a';
+    var BUILD = 'cdefeb2';
     // Hosts a pre-filled link may point at. Prevents a tampered setup link from sending entries elsewhere.
     var FORM_HOSTS = ['forms.office.com', 'forms.office365.us', 'forms.osi.office365.us', 'forms.microsoft.com', 'forms.cloud.microsoft'];
     // Form codes. req = the form must have it; rec = recommended (Setup and Review warn when missing).
@@ -823,6 +827,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var V = VIEWS[ui.view] || VIEWS.home;
         var top = $('top'), view = $('view'), dock = $('dock');
         top.textContent = ''; view.textContent = ''; dock.textContent = '';
+        dock.classList.remove('stack');
         V(top, view, dock);
     }
     function header(top, title, back, stepName) {
@@ -1532,14 +1537,17 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             h('div', { class: 'hint', text: 'This app can’t see the form, so only you can confirm it. ' + summary })));
         add(view, h('div', { class: 'hint', text: 'Not sure? Open the form again and check. If it goes in twice, both rows share the same Flight ID in Excel, so the duplicate is easy to remove.' }));
         add(view, h('div', { class: 'actions-row' },
-            h('button', { class: 'link-btn left', type: 'button', id: 'btn-reopen', onclick: function () { openForm(r); } }, 'Open the form again'),
             h('button', { class: 'link-btn left', type: 'button', id: 'btn-keep', onclick: function () { r.status = 'pending'; touch(r); render(); } }, 'Form didn’t load – keep for later'),
             h('button', { class: 'link-btn left', type: 'button', id: 'btn-back-review', onclick: function () {
                 if (cur() && cur() !== r) { sheet('Finish the current flight first', h('p', { text: 'Another flight is in progress. Finish or discard it, then change this one.' }), [{ label: 'OK', primary: true }]); return; }
                 r.status = 'draft'; r.step = 'review'; currentId = r.id; ui.handoffId = null; touch(r); go('review');
             } }, 'Change something')));
         add(view, signInHelp(r));
-        primary(dock, 'Yes, it was submitted', function () { confirmSubmitted(r); }, { id: 'btn-submitted', big: true });
+        // two equal choices, so nobody confirms by reflex: check the form first, or confirm it went in
+        add(view, h('div', { class: 'dock-spacer' }));
+        dock.classList.add('stack');
+        add(dock, h('button', { class: 'btn big outline', type: 'button', id: 'btn-reopen', onclick: function () { openForm(r); } }, 'Open the form again'));
+        add(dock, h('button', { class: 'btn big', type: 'button', id: 'btn-submitted', onclick: function () { confirmSubmitted(r); } }, 'Yes, it was submitted'));
     };
 
     // ---------- Screen 9: Done / repeated flights ----------
