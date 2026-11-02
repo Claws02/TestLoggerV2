@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-bTSceXIGrplFSlpYOmDg5iyRDK2qOAxNhP7CxewzkGg='; style-src 'sha256-r6+wRD5AnGdh6n1o/2Mkv64XVsOOPJV8cULWWud8TyQ='; font-src data:; img-src data:; connect-src https://api.weather.gov; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MO5rCnQUpyFbzUczBUXw4MMKRagWQJJIjDjWf/68R8Y='; style-src 'sha256-r6+wRD5AnGdh6n1o/2Mkv64XVsOOPJV8cULWWud8TyQ='; font-src data:; img-src data:; connect-src https://api.weather.gov; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -257,7 +257,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     // =====================================================================
     // Config
     // =====================================================================
-    var BUILD = 'cdefeb2';
+    var BUILD = 'd5a0b9d';
     // Hosts a pre-filled link may point at. Prevents a tampered setup link from sending entries elsewhere.
     var FORM_HOSTS = ['forms.office.com', 'forms.office365.us', 'forms.osi.office365.us', 'forms.microsoft.com', 'forms.cloud.microsoft'];
     // Form codes. req = the form must have it; rec = recommended (Setup and Review warn when missing).
@@ -282,7 +282,6 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         { tok: 'open', label: 'Open items', rec: true },
         { tok: 'site', label: 'Site' },
         { tok: 'manufacturer', label: 'Manufacturer' },
-        { tok: 'card', label: 'Project / task card' },
         { tok: 'batteries', label: 'Batteries' },
         { tok: 'observer', label: 'Spotter' },
         { tok: 'altitude', label: 'Max alt (m AGL, est.)' },
@@ -295,7 +294,9 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         { tok: 'observed', label: 'Operational conditions' },
         { tok: 'notes', label: 'Notes' }
     ];
-    var MISSIONS = ['Recreational', 'Photography / Videography', 'Inspection', 'Mapping / Surveying', 'Research / Testing', 'Training', 'Drone Show', 'Other'];
+    var MISSIONS = ['Hover', 'Range', 'Inspection', 'Mapping / Surveying', 'Research / Testing', 'Recreational', 'Other'];
+    // Codes no longer used. A form that still has them gets a blank answer, not the literal code.
+    var RETIRED_TOKENS = ['card'];
     var PRE = [
         { id: 'frame', short: 'Frame/arms', label: 'Frame / arms secure', crit: true, group: 'Airframe & power', help: 'Arms locked, no cracks, fasteners tight, landing gear sound.' },
         { id: 'battery', short: 'Battery', label: 'Battery charged / secure / undamaged', crit: true, help: 'Charged for the planned flight (plus reserve), latched, no swelling, dents or damaged leads.' },
@@ -357,7 +358,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     var flights = store.get(K.flights) || {};
     var carry = store.get(K.carry) || {};
     var currentId = store.get(K.current);
-    var ui = { view: 'home', handoffId: null, aircraftReturn: 'home', lastDone: null, gps: '', wx: '', showManualLoc: false, wxManualOpen: false, timer: null, openHelp: {} };
+    var ui = { justSignedIn: null, view: 'home', handoffId: null, aircraftReturn: 'home', lastDone: null, gps: '', wx: '', showManualLoc: false, wxManualOpen: false, timer: null, openHelp: {} };
 
     // =====================================================================
     // Helpers
@@ -480,8 +481,9 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var r = {
             v: 2, id: uuid(), createdAt: isoZ(now), tz: tzName(), status: 'draft', step: 'home',
             aircraft: a ? { manufacturer: a.manufacturer || '', model: a.model, serial: a.serial } : null,
-            mission: prefs.mission || '', missionOther: prefs.missionOther || '', site: prefs.site || '', observer: prefs.observer || '', pilot: '',
-            card: '', batteries: '', observed: '',
+            // a mission that has since been retired isn't carried over
+            mission: MISSIONS.indexOf(prefs.mission) !== -1 ? prefs.mission : '', missionOther: prefs.missionOther || '', site: prefs.site || '', observer: prefs.observer || '', pilot: '',
+            batteries: '', observed: '',
             location: null, weather: null,
             pre: {}, preAck: null,
             carry: c ? { serial: a.serial, text: c.text, from: c.at, resolvedAt: c.resolvedAt || null } : null,
@@ -510,7 +512,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         }
         var r = newRecord();
         r.aircraft = { model: model, serial: d.serial || '' };
-        ['site', 'batteries', 'observer', 'card', 'notes'].forEach(function (k) { if (d[k]) r[k] = d[k]; });
+        ['site', 'batteries', 'observer', 'notes'].forEach(function (k) { if (d[k]) r[k] = d[k]; });
         if (d.lat && d.lng) r.location = { lat: Number(d.lat), lng: Number(d.lng), source: 'manual' };
         if (d.wind || d.temp || d.cond) r.weather = { source: 'pilot', wind: d.wind || '', temp: d.temp || '', cond: d.cond || '' };
         if (d.date && d.time) {
@@ -685,7 +687,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             lat: loc && loc.lat != null ? String(loc.lat) : '', lng: loc && loc.lng != null ? String(loc.lng) : '', gps: gps,
             site: r.site, model: r.aircraft ? r.aircraft.model : '', serial: r.aircraft ? r.aircraft.serial : '',
             manufacturer: r.aircraft ? r.aircraft.manufacturer || '' : '', pilot: r.pilot || 'Same as submitter',
-            mission: missionText(r), card: r.card, batteries: r.batteries, observer: r.observer,
+            mission: missionText(r), batteries: r.batteries, observer: r.observer,
             altitude: r.altitude, outcome: outcomeText(r),
             issues: issueText(r), incident: inc,
             preflight: checklistText(r, 'pre', PRE), postcheck: checklistText(r, 'post', POST),
@@ -699,6 +701,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     function buildUrl(base, vals) {
         var url = base;
         FIELDS.forEach(function (f) { url = url.split('__' + f.tok + '__').join(encodeURIComponent(vals[f.tok] || '')); });
+        RETIRED_TOKENS.forEach(function (t) { url = url.split('__' + t + '__').join(''); });
         return url;
     }
 
@@ -989,7 +992,6 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         syncCarry(r);
         if (!editing) {
             if (!formStatus().ok) add(view, h('div', { class: 'banner warn', id: 'setup-banner' }, 'This phone isn’t connected to your form yet. Tap ', h('strong', { text: 'Setup' }), '.'));
-            else if (!settings.signedInAt) add(view, h('div', { class: 'banner warn', id: 'setup-banner' }, 'One more setup step: sign in to Microsoft so flights can submit. Tap ', h('strong', { text: 'Setup' }), '.'));
             if (r.aircraft && r.aircraft.serial) add(view, carryBanner(r.aircraft.serial, function (c) {
                 r.carry = { serial: r.aircraft.serial, text: c.text, from: c.at, resolvedAt: c.resolvedAt };
                 touch(r);
@@ -1042,9 +1044,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             })),
             otherBox,
             field('Site', h('input', { id: 'f-site', maxlength: 120, autocomplete: 'off', placeholder: 'e.g. Riverside Park, north field', value: r.site,
-                oninput: function () { r.site = clean(this.value); prefs.site = r.site; touch(r); } })),
-            field('Project / task card', h('input', { class: 'mono', id: 'f-card', maxlength: 60, autocomplete: 'off', autocapitalize: 'characters', value: r.card,
-                oninput: function () { r.card = clean(this.value); touch(r); } }))));
+                oninput: function () { r.site = clean(this.value); prefs.site = r.site; touch(r); } }))));
         add(view, locPanel(r));
         add(view, wxPanel(r));
         add(view, panel('Operational conditions & preflight notes', null, h('textarea', { id: 'f-observed', 'aria-label': 'Operational conditions and preflight notes', maxlength: 400, rows: 3,
@@ -1391,7 +1391,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             h('dt', { text: 'Aircraft' }), h('dd', null, r.aircraft ? aircraftName(r.aircraft) + ' · ' + (r.aircraft.serial || '—') : tag('missing', 'missing')),
             h('dt', { text: 'Pilot' }), h('dd', null, r.pilot || 'You (submitter)'),
             h('dt', { text: 'Mission' }), h('dd', null, missionText(r) || tag('missing', 'not set')),
-            h('dt', { text: 'Site' }), h('dd', null, r.site || '—', r.card ? ' · ' + r.card : ''),
+            h('dt', { text: 'Site' }), h('dd', null, r.site || '—'),
             r.batteries ? [h('dt', { text: 'Batteries' }), h('dd', { text: r.batteries })] : null,
             r.observer ? [h('dt', { text: 'Spotter' }), h('dd', { text: r.observer })] : null)));
         add(view, panel('Time', h('button', { class: 'link-btn', type: 'button', id: 'edit-times', onclick: editTimes }, 'Correct'), h('dl', { class: 'review', id: 'review-time' },
@@ -1457,38 +1457,31 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         r.returnTo = null;
         if (currentId === r.id) currentId = null; // the workflow is done; the record waits for submission
         ui.handoffId = r.id;
-        if (!navigator.onLine) { r.status = 'pending'; touch(r); go('handoff'); return; }
-        openForm(r);
+        r.status = 'pending'; // waits on the Submit screen: 1 sign in, 2 submit
+        touch(r);
+        go('handoff');
     }
     // Microsoft can't sign a pilot in through a long pre-filled link (AADSTS90015): Forms packs the whole
-    // link into the sign-in request, which is capped at about 2048 characters. Signing in once with the
-    // plain form link sets the session, and pre-filled links then open without the sign-in step.
+    // link into the sign-in request, which is capped at about 2048 characters. Signing in with the plain
+    // form link first sets the session (it lasts about a day), and the pre-filled link then opens directly.
     function plainFormUrl() {
         var u = new URL(formStatus().p.url), id = u.searchParams.get('id');
         return u.origin + u.pathname + (id ? '?id=' + encodeURIComponent(id) : '');
     }
+    function signedInToday() { return !!settings.signedInAt && localDate(new Date(settings.signedInAt)) === localDate(new Date()); }
     function signInToForms(r) {
         settings.signedInAt = isoZ(new Date());
         store.set(K.settings, settings);
-        if (r) { r.status = 'pending'; r.awaitingSignIn = true; ui.handoffId = r.id; touch(r); } // reopen this log when the pilot comes back
+        r.status = 'pending'; r.awaitingSignIn = true; ui.handoffId = r.id; touch(r); // come back to this log's Submit screen
         location.href = plainFormUrl();
     }
     function signInHelp(r) {
         return h('div', { class: 'banner warn', id: 'signin-help' },
             h('strong', { text: 'Seeing \u201cAADSTS90015: Requested query string is too long\u201d?' }),
-            h('div', { text: 'Microsoft can\u2019t sign you in through the long pre-filled link. Sign in with the plain form link, come back here, then open the form again. The log stays saved.' }),
-            h('button', { class: 'link-btn', type: 'button', id: 'btn-signin', onclick: function () { signInToForms(r); } }, 'Sign in to Microsoft Forms'));
+            h('div', { text: 'You weren\u2019t signed in to Microsoft. Go back to the Submit screen, do step 1 (Sign in), then step 2 (Submit). The log stays saved.' }),
+            h('button', { class: 'link-btn', type: 'button', id: 'btn-signin', onclick: function () { r.status = 'pending'; touch(r); render(); window.scrollTo(0, 0); } }, 'Back to the Submit screen'));
     }
     function openForm(r) {
-        if (!settings.signedInAt) {
-            r.status = 'pending'; ui.handoffId = r.id; touch(r);
-            ui.view = 'handoff'; render();
-            sheet('Sign in to Microsoft Forms first', h('p', { text: 'Do this once on this phone. Microsoft can\u2019t sign you in through the long pre-filled link, so sign in with the plain form, then come back here and tap Open form. The log stays saved.' }),
-                [{ label: 'Sign in to Microsoft Forms', primary: true, fn: function () { signInToForms(r); } },
-                 { label: 'I\u2019m already signed in', fn: function () { settings.signedInAt = isoZ(new Date()); store.set(K.settings, settings); openForm(r); } },
-                 { label: 'Cancel' }]);
-            return;
-        }
         var url = buildUrl(formStatus().p.url, valuesForForm(r));
         r.status = 'handoff';
         r.awaitingSignIn = false;
@@ -1518,20 +1511,38 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     VIEWS.handoff = function (top, view, dock) {
         var r = flights[ui.handoffId];
         if (!r) { go('home'); return; }
-        header(top, 'Submit to form', null);
         var summary = (r.aircraft ? r.aircraft.serial || r.aircraft.model : '') + ' · ' + (r.startAt ? localDate(new Date(r.startAt)) + ' ' + fmtTime(new Date(r.startAt)) : '') + ' · Flight ID ' + r.id.slice(0, 8);
         if (r.status === 'pending') {
-            add(view, h('div', { class: 'banner warn', id: 'pending-banner' }, h('strong', { text: 'Saved on this phone, not submitted yet.' }),
-                h('div', { text: navigator.onLine ? 'Open the form to submit it.' : 'No signal, so the form can’t open. Submit it when you’re back online; it waits on the Home screen.' })));
-            add(view, h('div', { class: 'hint', text: summary }));
-            add(view, h('button', { class: 'link-btn left', type: 'button', id: 'btn-next-pending', onclick: startNext }, 'Start next flight'));
-            if (navigator.onLine && settings.signedInAt) add(view, signInHelp(r));
-            primary(dock, 'Open form', function () {
-                if (!navigator.onLine) { sheet('Still offline', h('p', { text: 'The phone has no connection. The log stays saved here.' }), [{ label: 'OK', primary: true }]); return; }
-                openForm(r);
-            }, { id: 'btn-open', secondary: { label: 'Home', fn: function () { go('home'); } }, secondaryId: 'btn-home' });
+            header(top, 'Submit flight log', null);
+            var done1 = signedInToday(), back = ui.justSignedIn === r.id;
+            ui.justSignedIn = null;
+            var offline = function () { sheet('No signal', h('p', { text: 'The phone has no connection. The log stays saved here and waits on the Home screen.' }), [{ label: 'OK', primary: true }]); };
+            add(view, h('div', { class: 'hint', text: 'Saved on this phone, not submitted yet. ' + summary }));
+            if (!navigator.onLine) add(view, h('div', { class: 'banner warn', id: 'pending-banner' }, h('strong', { text: 'No signal.' }), h('div', { text: 'Submit when you\u2019re back online. The log waits on the Home screen.' })));
+            if (back) add(view, h('div', { class: 'banner ok', id: 'signed-in-banner' }, h('strong', { text: 'Signed in. Now tap 2 \u00b7 Submit flight log.' }),
+                h('div', { text: 'If Microsoft didn\u2019t finish signing you in, do step 1 again first.' })));
+            add(view, h('section', { class: 'panel', id: 'step-signin' },
+                h('div', { class: 'panel-head' }, h('h2', { text: '1 \u00b7 Sign in to Microsoft' }), done1 ? h('span', { class: 'chip ok', text: 'done ' + fmtTime(new Date(settings.signedInAt)) }) : null),
+                h('div', { class: 'hint', text: done1
+                    ? 'You signed in today. Microsoft keeps you signed in for about a day; if the form shows a sign-in error, do this step again.'
+                    : 'Do this first. It opens the form so you can sign in with your work account. When it shows the form, come back to this app. Don\u2019t fill in that form.' }),
+                h('button', { class: 'btn big block' + (done1 ? ' outline' : ''), type: 'button', id: 'btn-signin-step', onclick: function () { if (!navigator.onLine) { offline(); return; } signInToForms(r); } }, done1 ? 'Sign in again' : 'Sign in to Microsoft')));
+            add(view, h('section', { class: 'panel', id: 'step-submit' },
+                h('div', { class: 'panel-head' }, h('h2', { text: '2 \u00b7 Submit flight log' })),
+                h('div', { class: 'hint', text: 'After you\u2019ve signed in: opens the form with everything filled in. Check it, then tap Submit at the bottom of the form.' }),
+                h('button', { class: 'btn big block' + (done1 ? '' : ' outline'), type: 'button', id: 'btn-open', onclick: function () {
+                    if (!navigator.onLine) { offline(); return; }
+                    if (done1) { openForm(r); return; }
+                    sheet('Sign in first', h('p', { text: 'You haven\u2019t signed in to Microsoft today. Without step 1, the form shows the error \u201cAADSTS90015: Requested query string is too long.\u201d' }),
+                        [{ label: '1 \u00b7 Sign in to Microsoft', primary: true, fn: function () { signInToForms(r); } },
+                         { label: 'I\u2019m signed in \u2013 submit', fn: function () { openForm(r); } }, { label: 'Cancel' }]);
+                } }, 'Submit flight log')));
+            add(view, h('div', { class: 'actions-row' },
+                h('button', { class: 'link-btn left', type: 'button', id: 'btn-home', onclick: function () { go('home'); } }, 'Save for later'),
+                h('button', { class: 'link-btn left', type: 'button', id: 'btn-next-pending', onclick: startNext }, 'Start next flight')));
             return;
         }
+        header(top, 'Did it submit?', null);
         add(view, h('section', { class: 'panel' },
             h('p', { class: 'big-q', text: 'Did Microsoft Forms say your response was submitted?' }),
             h('div', { class: 'hint', text: 'This app can’t see the form, so only you can confirm it. ' + summary })));
@@ -1620,10 +1631,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             store.set(K.settings, settings);
             return true;
         };
-        var signIn = function () { if (!saveLink()) return; settings.signInReturn = true; signInToForms(null); };
-        if (ui.justSignedIn) add(view, h('div', { class: 'banner ok', id: 'setup-done' }, h('strong', { text: 'Setup is done.' }),
-            h('div', { text: 'If Microsoft showed your form, you\u2019re signed in and flights will submit straight away. If it asked you to sign in and you didn\u2019t finish, tap Sign in again.' })));
-        add(view, panel('1 \u00b7 Connect your form', formStatus().ok ? h('span', { class: 'chip ok', text: 'connected' }) : null,
+        add(view, panel('Connect your form', formStatus().ok ? h('span', { class: 'chip ok', text: 'connected' }) : null,
             h('ol', { class: 'steps' },
                 h('li', null, 'In Microsoft Forms, add one ', h('strong', { text: 'Text' }), ' question per field (no number or date restrictions).'),
                 h('li', null, 'Click ', h('strong', { text: '⋯ → Get pre-filled URL' }), '. In each question, type its code from the list below, for example ', h('code', { text: '__flightid__' }), '.'),
@@ -1632,9 +1640,6 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             field('Aircraft models (comma-separated)', models)));
         checkSetupUrl(url.value, msg, toks);
         var shareMsg = h('div', { class: 'hint', id: 'share-msg' });
-        add(view, panel('2 \u00b7 Sign in to Microsoft', settings.signedInAt ? h('span', { class: 'chip ok', text: 'done ' + localDate(new Date(settings.signedInAt)) }) : null,
-            h('div', { class: 'hint', text: 'Opens your form so you can sign in with your work account, then come back to this app. Do it once per phone, and again only if Microsoft signs you out. After that, flights submit without a sign-in stop.' }),
-            h('button', { class: 'btn block' + (settings.signedInAt ? ' secondary' : ''), type: 'button', id: 'btn-signin-setup', onclick: signIn }, settings.signedInAt ? 'Sign in again' : 'Sign in to Microsoft')));
         add(view, panel('Share with other pilots', null,
             h('div', { class: 'hint', text: 'This makes a link that sets up another phone with the same form. Send it only through company channels.' }),
             h('button', { class: 'link-btn left', type: 'button', id: 'btn-share', onclick: function () {
@@ -1658,13 +1663,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
                     } }]);
             } }, 'Clear settings and data'),
             h('div', { class: 'hint' }, 'Build ', h('code', { text: BUILD }))));
-        ui.justSignedIn = false;
-        if (formStatus().ok && !settings.signedInAt) primary(dock, 'Sign in to Microsoft', signIn, { id: 'btn-setup-save', secondary: { label: 'Back', fn: leave }, secondaryId: 'btn-setup-cancel' });
-        else primary(dock, formStatus().ok ? 'Done' : 'Save', function () {
-            if (!saveLink()) return;
-            if (!settings.signedInAt) { render(); var b = $('btn-signin-setup'); if (b) b.scrollIntoView({ block: 'center' }); return; } // next step: sign in
-            go('home');
-        }, { id: 'btn-setup-save', secondary: { label: 'Back', fn: leave }, secondaryId: 'btn-setup-cancel' });
+        primary(dock, 'Save', function () { if (saveLink()) go('home'); }, { id: 'btn-setup-save', secondary: { label: 'Back', fn: leave }, secondaryId: 'btn-setup-cancel' });
     };
 
     // Setup arrives in the #fragment, which browsers never send to the web server.
@@ -1681,7 +1680,6 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             settings.url = p.url;
             settings.models = models.length ? models : ['M1'];
             store.set(K.settings, settings);
-            ui.view = 'settings'; // next: sign in to Microsoft
         } catch (e) { alert('That setup link is damaged.'); }
     }
 
@@ -1697,14 +1695,15 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     importFromHash();
     migrateOldDraft();
     if (currentId && !flights[currentId]) currentId = null;
-    var wasSigningIn = settings.signInReturn;
-    if (wasSigningIn) { delete settings.signInReturn; store.set(K.settings, settings); }
+    if (settings.signInReturn) { delete settings.signInReturn; store.set(K.settings, settings); } // from an older build
     Object.keys(flights).forEach(function (k) { if (flights[k].step === 'flightsetup') flights[k].step = 'home'; });
     var inHandoff = Object.keys(flights).map(function (k) { return flights[k]; }).filter(function (r) { return r.status === 'handoff' || r.awaitingSignIn; })
         .sort(function (a, b) { return a.handoffAt < b.handoffAt ? 1 : -1; })[0];
-    if (inHandoff) { ui.handoffId = inHandoff.id; ui.view = 'handoff'; }
-    else if (wasSigningIn) { ui.view = 'settings'; ui.justSignedIn = true; }
-    else if (ui.view !== 'settings' && cur() && STEPS.indexOf(cur().step) !== -1) ui.view = cur().step; // resume where the pilot left off (a setup link goes to Setup instead)
+    if (inHandoff) {
+        ui.handoffId = inHandoff.id; ui.view = 'handoff';
+        if (inHandoff.awaitingSignIn) { ui.justSignedIn = inHandoff.id; inHandoff.awaitingSignIn = false; touch(inHandoff); }
+    }
+    else if (cur() && STEPS.indexOf(cur().step) !== -1) ui.view = cur().step; // resume where the pilot left off
     render();
 
     if ('serviceWorker' in navigator && window.isSecureContext) {
