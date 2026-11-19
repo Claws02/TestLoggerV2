@@ -1,6 +1,6 @@
 'use strict';
 // Caches only the app page so it opens without signal. Never touches the weather API or the form.
-const CACHE = 'field-form-d5a0b9d';
+const CACHE = 'field-form-ec4f7b1';
 const PAGE = './';
 
 self.addEventListener('install', (e) => {
@@ -14,8 +14,11 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-    const req = e.request;
-    if (req.method !== 'GET' || req.mode !== 'navigate' || new URL(req.url).origin !== self.location.origin) return;
+    const req = e.request, url = new URL(req.url);
+    if (req.method !== 'GET' || req.mode !== 'navigate' || url.origin !== self.location.origin) return;
+    // Only the app page itself. Other pages in this folder (like setup/) are left alone, so they can't replace the cached app.
+    const scope = new URL(self.registration.scope).pathname;
+    if (url.pathname !== scope && url.pathname !== scope + 'index.html') return;
     // Network first so updates arrive; fall back to the cached page after 4 s or when offline.
     e.respondWith((async () => {
         const cache = await caches.open(CACHE);

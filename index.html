@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MO5rCnQUpyFbzUczBUXw4MMKRagWQJJIjDjWf/68R8Y='; style-src 'sha256-r6+wRD5AnGdh6n1o/2Mkv64XVsOOPJV8cULWWud8TyQ='; font-src data:; img-src data:; connect-src https://api.weather.gov; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Au0TYEfVqsZLgODB5csFDUtlV028dWDnUAx7XgR/TG8='; style-src 'sha256-My4/Q/p5J2XD6/u+UW2z9TI6dw0btEbceudqMLuhg5o='; font-src data:; img-src data:; connect-src https://api.weather.gov; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -112,6 +112,7 @@ input, select, textarea {
     padding: 11px 12px; min-height: 46px; appearance: none; -webkit-appearance: none;
 }
 textarea { resize: vertical; min-height: 84px; }
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.5l4.5 4.5 4.5-4.5' fill='none' stroke='%23878d86' stroke-width='2'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 34px; }
 input.mono, textarea.mono { font-family: 'Plex Mono', ui-monospace, monospace; }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
 .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
@@ -142,6 +143,24 @@ details.hint summary { min-height: 40px; display: flex; align-items: center; }
 .opt.bad[aria-pressed="true"], .opt.bad[aria-checked="true"] { border-color: var(--bad); background: var(--bad-bg); }
 .opt.bad[aria-pressed="true"] .dot, .opt.bad[aria-checked="true"] .dot { background: var(--bad); border-color: var(--bad); }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.hazard { border-left: 3px solid var(--warn); padding: 4px 0 8px 12px; margin: 8px 0 14px; }
+.sub-q { font-size: 13px; font-weight: 600; margin: 12px 0 6px; }
+.sub-q.strong { font-size: 15px; margin-top: 16px; }
+.risk-cell { margin: 10px 0 4px; }
+.panel .chips + .big-q { margin-top: 20px; }
+.risk-cell .tag { margin-left: 0; font-size: 13px; padding: 3px 8px; white-space: normal; }
+.tag.band-ok { background: #1f9d55; color: #fff; }
+.tag.band-warn { background: #f5c518; color: #1c1c1c; }
+.tag.band-bad { background: #d32f2f; color: #fff; }
+details.how ol { padding-left: 18px; margin: 4px 0 10px; }
+table.matrix { border-collapse: collapse; width: 100%; font-size: 11px; margin-bottom: 8px; }
+table.matrix th, table.matrix td { border: 1px solid var(--line); padding: 4px 2px; text-align: center; font-weight: 600; }
+table.matrix th { font-weight: 500; }
+table.matrix td.mx-ok { background: #1f9d55; color: #fff; }
+table.matrix td.mx-warn { background: #f5c518; color: #1c1c1c; }
+table.matrix td.mx-bad { background: #d32f2f; color: #fff; }
+table.matrix td.used { outline: 3px solid var(--ink); outline-offset: -3px; }
+ul.plain { margin: 0; padding-left: 16px; }
 .chips .opt { width: auto; min-height: 44px; padding: 8px 14px; font-size: 15px; }
 .chips .opt .dot { display: none; }
 .follow { margin: -2px 0 6px 0; }
@@ -257,7 +276,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     // =====================================================================
     // Config
     // =====================================================================
-    var BUILD = 'd5a0b9d';
+    var BUILD = 'ec4f7b1';
     // Hosts a pre-filled link may point at. Prevents a tampered setup link from sending entries elsewhere.
     var FORM_HOSTS = ['forms.office.com', 'forms.office365.us', 'forms.osi.office365.us', 'forms.microsoft.com', 'forms.cloud.microsoft'];
     // Form codes. req = the form must have it; rec = recommended (Setup and Review warn when missing).
@@ -275,16 +294,22 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         { tok: 'end', label: 'End (UTC)', rec: true },
         { tok: 'lat', label: 'Latitude', rec: true },
         { tok: 'lng', label: 'Longitude', rec: true },
+        { tok: 'elevation', label: 'Altitude (phone GPS)', rec: true },
         { tok: 'gps', label: 'Location source', rec: true },
         { tok: 'preflight', label: 'Preflight', rec: true },
         { tok: 'issues', label: 'Issues', rec: true },
         { tok: 'postcheck', label: 'Postflight inspection', rec: true },
         { tok: 'open', label: 'Open items', rec: true },
+        { tok: 'remoteid', label: 'Remote ID', rec: true },
+        { tok: 'risk', label: 'Risk assessment', rec: true },
+        { tok: 'results', label: 'Test results', rec: true },
         { tok: 'site', label: 'Site' },
         { tok: 'manufacturer', label: 'Manufacturer' },
         { tok: 'batteries', label: 'Batteries' },
+        { tok: 'battery', label: 'Battery %' },
+        { tok: 'payload', label: 'Payload weight' },
         { tok: 'observer', label: 'Spotter' },
-        { tok: 'altitude', label: 'Max alt (m AGL, est.)' },
+        { tok: 'altitude', label: 'Max altitude above takeoff' },
         { tok: 'incident', label: 'Incident' },
         { tok: 'wind', label: 'Wind' },
         { tok: 'temp', label: 'Temp' },
@@ -294,24 +319,119 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         { tok: 'observed', label: 'Operational conditions' },
         { tok: 'notes', label: 'Notes' }
     ];
-    var MISSIONS = ['Hover', 'Range', 'Inspection', 'Mapping / Surveying', 'Research / Testing', 'Recreational', 'Other'];
+    // Test types. A flight can have several; each shows its own result fields on the Postflight screen.
+    // Field types: int, choice (opts), rating (1-5), unit (number + unit select), text.
+    var DRIFT = ['Low', 'Medium', 'High'];
+    var TESTS = [
+        { id: 'tl', name: 'Takeoff & landing reliability', fields: [
+            { k: 'attempts', label: 'Takeoff + landing attempts', type: 'int' },
+            { k: 'success', label: 'Successful', type: 'int' },
+            { k: 'streak', label: 'Longest run in a row without a problem', type: 'int' }] },
+        { id: 'hover', name: 'Hover', fields: [
+            { k: 'secs', label: 'Hover time (seconds)', type: 'int', s: '{v} s' },
+            { k: 'drift', label: 'Drift', type: 'choice', opts: DRIFT, s: 'drift {v}' }] },
+        { id: 'payload', name: 'Payload', fields: [
+            { k: 'handling', label: 'Handling with the payload', type: 'rating', lo: 'poor', hi: 'like no payload' }] },
+        { id: 'resp', name: 'Responsiveness', fields: [
+            { k: 'rating', label: 'Response to stick inputs', type: 'rating', lo: 'sluggish', hi: 'crisp', s: 'rating {v}/5' }] },
+        { id: 'wind', name: 'Wind tolerance', fields: [
+            { k: 'max', label: 'Strongest wind flown in', type: 'unit', units: ['kt', 'mph', 'm/s'], s: '{v} {u}' },
+            { k: 'stability', label: 'Stability in that wind', type: 'rating', lo: 'unstable', hi: 'rock steady', s: 'stability {v}/5' }] },
+        { id: 'range', name: 'Range', fields: [
+            { k: 'dist', label: 'Farthest distance from the pilot', type: 'unit', units: ['m', 'ft', 'km', 'mi'], s: '{v} {u}' },
+            { k: 'link', label: 'Link quality at that distance', type: 'choice', opts: ['Good', 'Fair', 'Poor', 'Lost'], s: 'link {v}' }] },
+        { id: 'rth', name: 'Failsafe / RTH', fields: [
+            { k: 'trigger', label: 'How it was triggered', type: 'choice', opts: ['RTH button', 'Radio link off', 'Low battery', 'Other'], s: 'trigger: {v}' },
+            { k: 'worked', label: 'Did it work as expected?', type: 'choice', opts: ['Yes', 'Partly', 'No'], s: 'worked: {v}' },
+            { k: 'offset', label: 'Landing distance from the home point', type: 'unit', units: ['m', 'ft'], s: 'landed {v} {u} from home' }] },
+        { id: 'hold', name: 'Position hold (GPS)', fields: [
+            { k: 'secs', label: 'Time held hands-off (seconds)', type: 'int', s: '{v} s' },
+            { k: 'drift', label: 'Drift', type: 'choice', opts: DRIFT, s: 'drift {v}' }] },
+        { id: 'endur', name: 'Endurance', note: 'Flight time comes from the timer. Add the battery % at start and landing for a full picture.', fields: [] },
+        { id: 'train', name: 'Training / familiarization', fields: [
+            { k: 'skill', label: 'What was practiced', type: 'text', s: '{v}' }] }
+    ];
+    var MISSIONS = TESTS.map(function (t) { return t.name; }).concat(['Research / Testing', 'Recreational', 'Other']);
     // Codes no longer used. A form that still has them gets a blank answer, not the literal code.
     var RETIRED_TOKENS = ['card'];
     var PRE = [
-        { id: 'frame', short: 'Frame/arms', label: 'Frame / arms secure', crit: true, group: 'Airframe & power', help: 'Arms locked, no cracks, fasteners tight, landing gear sound.' },
+        { id: 'frame', short: 'Frame/arms', label: 'Frame / arms secure', crit: true, group: 'Airframe & power', help: 'Arms locked, no cracks, fasteners tight.' },
+        { id: 'legs', short: 'Legs', label: 'Landing legs attached', crit: true, na: true, help: 'Legs fitted, locked and undamaged. N/A if the aircraft has no separate legs.' },
         { id: 'battery', short: 'Battery', label: 'Battery charged / secure / undamaged', crit: true, help: 'Charged for the planned flight (plus reserve), latched, no swelling, dents or damaged leads.' },
-        { id: 'nav', short: 'GPS/compass/IMU', label: 'GPS / compass / IMU status', crit: true, group: 'Navigation & links', help: 'As shown on your controller or app: satellite connection, compass calibrated if prompted, no compass or IMU warnings. This app does not read them.' },
-        { id: 'link', short: 'Telemetry/video', label: 'Telemetry / video (camera / FPV) link', na: true, help: 'Camera or FPV feed and telemetry showing normally on your controller, phone or tablet. Mark N/A if the aircraft has neither.' },
-        { id: 'payload', short: 'Payload', label: 'Payload secure', na: true, group: 'Payload & propulsion', help: 'Camera, gimbal or sensor mounted and locked; cables secured. N/A if none fitted.' },
+        { id: 'payload', short: 'Payload', label: 'Payload secure', na: true, group: 'Payload & propulsion', help: 'Camera, gimbal, sensor or test payload mounted and locked; cables secured. Enter its weight. N/A if none fitted.' },
         { id: 'props', short: 'Motors/props', label: 'Motors / propellers inspected', crit: true, help: 'Props undamaged, correct orientation and tight; motors spin freely with no grit or noise.' },
-        { id: 'fc', short: 'FC/firmware', label: 'Flight controller / firmware checked', crit: true, group: 'Control & failsafe', help: 'Expected firmware and parameters loaded; no arming warnings.' },
-        { id: 'rc', short: 'RC/failsafe', label: 'RC link / failsafe checked', crit: true, help: 'Controller charged and powered on, apps running, link bound, range check if required, failsafe action set.' },
-        { id: 'rth', short: 'RTH/RTL', label: 'Return-to-home / RTL settings', crit: true, na: true, help: 'Home point and return altitude suit this site’s obstacles. N/A if the aircraft has no return-to-home.' },
         { id: 'notam', short: 'NOTAMs/TFRs/authorization', label: 'FAA NOTAMs / TFRs checked, authorization obtained if required', crit: true, group: 'Operation',
             help: 'Check NOTAMs and TFRs for this location and time. In controlled airspace, have LAANC or other FAA authorization before flying.',
             links: [['FAA NOTAM Search', 'https://notams.aim.faa.gov/notamSearch/'], ['FAA TFR list', 'https://tfr.faa.gov/'], ['B4UFLY', 'https://www.faa.gov/uas/getting_started/b4ufly']] },
-        { id: 'site', short: 'Site/people/wx', label: 'Site, people & weather reviewed', crit: true, help: 'Site hazards and obstacles, people nearby and standoff distance, weather within your and the aircraft\u2019s limits.' }
+        { id: 'site', short: 'Site/people/wx', label: 'Site, people & weather reviewed', crit: true, help: 'Site hazards and obstacles, people nearby and standoff distance, weather within your and the aircraft’s limits.' },
+        { id: 'rid', short: 'Remote ID', label: 'Remote ID on and broadcasting', crit: true, help: 'Built-in Remote ID enabled, or the broadcast module fitted and powered. Check the status in your controller or app.' },
+        { id: 'nav', short: 'GPS/compass/IMU', label: 'GPS / compass / IMU status', crit: true, group: 'Navigation & links', help: 'As shown on your controller or app: satellite connection, compass calibrated if prompted, no compass or IMU warnings. This app does not read them.' },
+        { id: 'link', short: 'Telemetry/video', label: 'Telemetry / video (camera / FPV) link', na: true, help: 'Camera or FPV feed and telemetry showing normally on your controller, phone or tablet. Mark N/A if the aircraft has neither.' },
+        { id: 'rth', short: 'RTH', label: 'Return-to-home set', crit: true, help: 'Home point recorded at this takeoff spot, and return altitude clears this site’s obstacles.' },
+        { id: 'arm', short: 'Arm/disarm/failsafe', label: 'Arm / disarm & failsafe test', crit: true,
+            help: 'Motors arm and disarm on command; the emergency motor stop works; with the radio link lost, the aircraft takes its failsafe action (return home or land). Confirm the action in your settings.' }
     ];
+    // Risk assessment after preflight. Hazards are identified with the FAA PAVE checklist (Pilot, Aircraft, enVironment,
+    // External pressures; FAA PAVE handout and AC 107-2 A.5.4.2, IMSAFE for the pilot). Each hazard is rated with the
+    // AC 107-2 Appendix A criteria (Table A-1) and placed on its safety risk matrix (Table A-2): Red is unacceptable,
+    // Yellow is acceptable with mitigation, Green is acceptable. Mitigations follow Figure A-1.
+    var RISK = [
+        { id: 'P', name: 'Pilot', help: 'Am I healthy for flight, and within my personal minimums for this sUAS? (IMSAFE)', items: [
+            { id: 'illness', short: 'Illness', q: 'Illness: am I free of any illness or symptom of an illness that might affect me in flight?' },
+            { id: 'medication', short: 'Medication', q: 'Medication: am I free of any drug (prescription or over-the-counter) that might affect me?' },
+            { id: 'stress', short: 'Stress', q: 'Stress: am I free of psychological or emotional factors that might affect my performance?' },
+            { id: 'alcohol', short: 'Alcohol', q: 'Alcohol: no alcohol within the last 8 to 24 hours?' },
+            { id: 'fatigue', short: 'Fatigue', q: 'Fatigue: have I had sufficient sleep and rest recently?' },
+            { id: 'eating', short: 'Eating', q: 'Eating: am I sufficiently nourished (and hydrated)?' },
+            { id: 'current', short: 'Familiar & current', q: 'Am I familiar with and current in this aircraft and this test, within my personal minimums?' }
+        ] },
+        { id: 'A', name: 'Aircraft', help: 'What limitations will the aircraft impose on this flight?', items: [
+            { id: 'condition', short: 'Aircraft condition', q: 'Preflight done: aircraft, control station and takeoff/landing equipment in condition for safe operation?' },
+            { id: 'secured', short: 'Payload secured', q: 'Payload and equipment properly secured to the aircraft?' },
+            { id: 'equipped', short: 'Right aircraft', q: 'Is this the right aircraft for the flight, and is it equipped for it?' },
+            { id: 'load', short: 'Load & altitude', q: 'Can it carry the planned load and operate at the altitudes needed?' },
+            { id: 'reserve', short: 'Battery reserve', q: 'Enough battery for the planned flight, with reserves?' }
+        ] },
+        { id: 'V', name: 'Environment', help: 'Weather, site, airspace and light. Have I left myself an “out”?', items: [
+            { id: 'weather', short: 'Weather', q: 'Weather: am I comfortable and experienced enough to fly in these conditions (wind, gusts, rain, temperature)?' },
+            { id: 'out', short: 'Emergency landing spots', q: 'Have I left myself an “out”, with alternative landing spots in case of an emergency?' },
+            { id: 'airspace', short: 'Airspace & TFRs', q: 'Airspace and TFRs checked for the area of operation?' },
+            { id: 'obstacles', short: 'Obstacles & people', q: 'Terrain, obstacles (towers, wires, trees) and people known and avoidable?' },
+            { id: 'light', short: 'Light & visibility', q: 'Light and visibility good enough to keep the aircraft in sight?' }
+        ] },
+        { id: 'E', name: 'External pressures', help: 'External pressure is the one risk factor that can cause a pilot to ignore all the others.', items: [
+            { id: 'hurry', short: 'Pressure to hurry', q: 'Free of pressure to complete the flight operation quickly?' },
+            { id: 'anxious', short: 'Flight-induced stress', q: 'Will this flight leave me calm, not stressed or anxious?' },
+            { id: 'culture', short: 'Safety culture', q: 'Free of an unhealthy safety culture (pushed to skip steps or accept shortcuts)?' },
+            { id: 'honest', short: 'Honest about limits', q: 'Am I being honest with myself and others about my abilities and limitations?' },
+            { id: 'impress', short: 'Desire to impress', q: 'Free of the desire to impress or demonstrate (“Watch this!”)?' }
+        ] }
+    ];
+    // AC 107-2 Table A-1, Sample Severity and Likelihood Criteria (verbatim).
+    var SEVERITY = [
+        { v: 'A', name: 'Catastrophic', def: 'Equipment destroyed, multiple deaths.' },
+        { v: 'B', name: 'Hazardous', def: 'Large reduction in safety margins, physical distress, or a workload such that crewmembers cannot be relied upon to perform their tasks accurately or completely. Serious injury or death. Major equipment damage.' },
+        { v: 'C', name: 'Major', def: 'Significant reduction in safety margins, reduction in the ability of crewmembers to cope with adverse operating conditions as a result of an increase in workload, or as result of conditions impairing their efficiency. Serious incident. Injury to persons.' },
+        { v: 'D', name: 'Minor', def: 'Nuisance. Operating limitations. Use of emergency procedures. Minor incident.' },
+        { v: 'E', name: 'Negligible', def: 'Little consequence.' }
+    ];
+    var LIKELIHOOD = [
+        { v: 5, name: 'Frequent', def: 'Likely to occur many times.' },
+        { v: 4, name: 'Occasional', def: 'Likely to occur sometimes.' },
+        { v: 3, name: 'Remote', def: 'Unlikely, but possible to occur.' },
+        { v: 2, name: 'Improbable', def: 'Very unlikely to occur.' },
+        { v: 1, name: 'Extremely improbable', def: 'Almost inconceivable that the event will occur.' }
+    ];
+    // AC 107-2 Table A-2, Safety Risk Matrix (colors as published).
+    var MATRIX_RED = ['5A', '5B', '5C', '4A', '4B', '3A'];
+    var MATRIX_GREEN = ['3E', '2D', '2E', '1A', '1B', '1C', '1D', '1E'];
+    function matrixBand(l, s) {
+        if (!l || !s) return '';
+        var c = l + s;
+        return MATRIX_RED.indexOf(c) !== -1 ? 'Red' : MATRIX_GREEN.indexOf(c) !== -1 ? 'Green' : 'Yellow';
+    }
+    var RISK_ITEMS = [];
+    RISK.forEach(function (cat) { cat.items.forEach(function (it) { it.cat = cat.id; RISK_ITEMS.push(it); }); });
     var POST = [
         { id: 'battery', short: 'Battery', label: 'Battery disconnected / inspected', link: ['battery'] },
         { id: 'props', short: 'Props/frame', label: 'Propellers / frame / landing gear inspected', help: 'Chips, cracks or loose props; cracked arms or shell; landing gear and any signs of a hard landing.', link: ['props', 'hard'] },
@@ -337,8 +457,8 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         { id: 'other', label: 'Other' },
         { id: 'unassessed', label: 'Not yet assessed', excl: true }
     ];
-    var STEPS = ['preflight', 'active', 'outcome', 'inspect', 'review'];
-    var STEP_LABEL = { home: 'Flight details', preflight: 'Preflight checklist', active: 'Flight in progress', outcome: 'Postflight', inspect: 'Postflight inspection', review: 'Review' };
+    var STEPS = ['preflight', 'risk', 'active', 'outcome', 'inspect', 'review'];
+    var STEP_LABEL = { home: 'Flight details', preflight: 'Preflight checklist', risk: 'Risk assessment', active: 'Flight in progress', outcome: 'Postflight', inspect: 'Postflight inspection', review: 'Review' };
     var LONG_FLIGHT_MIN = 90;   // ask to verify the end time beyond this
     var ALT_LIMIT_M = 122;      // 400 ft AGL
     var URL_WARN = 7000;        // very long pre-filled links may be cut off
@@ -353,7 +473,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         del: function (k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
     };
 
-    var settings = store.get(K.settings) || { url: '', models: ['M1'] };
+    var settings = store.get(K.settings) || { url: '', models: [] };
     var prefs = store.get(K.prefs) || { aircraft: [], selected: null, mission: '', site: '', observer: '', pilot: '' };
     var flights = store.get(K.flights) || {};
     var carry = store.get(K.carry) || {};
@@ -423,7 +543,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         if (arguments.length > 2) { for (var i = 1; i < arguments.length; i++) add(el, arguments[i]); return; }
         if (c == null || c === false) return;
         if (Array.isArray(c)) { c.forEach(function (x) { add(el, x); }); return; }
-        el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+        el.appendChild(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c);
     }
     function panel(title, right) {
         var kids = Array.prototype.slice.call(arguments, 2);
@@ -431,6 +551,35 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     }
     function field(label, input, required) { return h('label', { class: 'f' }, h('span', null, label, required ? h('em', { text: ' *' }) : null), input); }
     function tag(kind, text) { return h('span', { class: 'tag ' + kind, text: text }); }
+    // Whole-number box: stores '' or the digits, shows a hint when out of range.
+    function intInput(id, value, max, onSet, placeholder) {
+        var el = h('input', { class: 'mono', id: id, inputmode: 'numeric', maxlength: String(max).length + 1, autocomplete: 'off', value: value == null ? '' : String(value), placeholder: placeholder || '' });
+        el.addEventListener('input', function () {
+            var ok = /^\d+$/.test(el.value) && Number(el.value) <= max;
+            el.setAttribute('aria-invalid', String(!(ok || el.value === '')));
+            onSet(ok ? el.value : '');
+        });
+        return el;
+    }
+    function unitSelect(id, units, value, onSet) {
+        var el = h('select', { id: id, 'aria-label': 'Unit' }, units.map(function (u) { return h('option', { value: u, text: u }); }));
+        el.value = units.indexOf(value) !== -1 ? value : units[0];
+        el.addEventListener('change', function () { onSet(el.value); });
+        return el;
+    }
+    function chipChoice(id, opts, value, onSet, ariaLabel, cls) {
+        return h('div', { class: 'chips', role: 'radiogroup', 'aria-label': ariaLabel, id: id }, opts.map(function (o, i) {
+            var v = typeof o === 'object' ? o.v : o, lbl = typeof o === 'object' ? o.l : o;
+            return h('button', { class: 'opt' + (cls ? ' ' + cls(i) : ''), type: 'button', role: 'radio', 'aria-checked': String(value === v), 'data-v': String(v), onclick: function (e) {
+                onSet(v);
+                e.currentTarget.parentNode.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', String(b === e.currentTarget)); });
+            } }, h('span', { class: 'dot' }), lbl);
+        }));
+    }
+    function notesBox(r, key, label) {
+        return panel(label || 'Notes', null, h('textarea', { id: 'notes-' + key, 'aria-label': (label || 'Notes'), maxlength: 500, rows: 2, placeholder: 'Anything worth noting at this step (optional)',
+            value: r.notesBy[key] || '', oninput: function () { r.notesBy[key] = this.value; touch(r); } }));
+    }
 
     function sheet(title, body, actions) {
         var back = h('div', { class: 'sheet-back' });
@@ -481,20 +630,40 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var r = {
             v: 2, id: uuid(), createdAt: isoZ(now), tz: tzName(), status: 'draft', step: 'home',
             aircraft: a ? { manufacturer: a.manufacturer || '', model: a.model, serial: a.serial } : null,
-            // a mission that has since been retired isn't carried over
-            mission: MISSIONS.indexOf(prefs.mission) !== -1 ? prefs.mission : '', missionOther: prefs.missionOther || '', site: prefs.site || '', observer: prefs.observer || '', pilot: '',
+            // tests that have since been retired aren't carried over
+            missions: (prefs.missions || []).filter(function (m) { return MISSIONS.indexOf(m) !== -1; }), missionOther: prefs.missionOther || '',
+            site: prefs.site || '', observer: prefs.observer || '', pilot: '',
             batteries: '', observed: '',
             location: null, weather: null,
             pre: {}, preAck: null,
             carry: c ? { serial: a.serial, text: c.text, from: c.at, resolvedAt: c.resolvedAt || null } : null,
             startAt: null, endAt: null, corrections: [],
             outcome: '', outcomeNote: '', issues: [], issueNotes: {}, incident: { what: '', harm: '' },
-            post: {}, altitude: '', notes: '', returnTo: null, attempts: 0
+            post: {}, notes: '', returnTo: null, attempts: 0,
+            risk: newRisk(), tests: {},
+            payload: { value: '', unit: prefs.payloadUnit || 'g' }, batt: { start: '', end: '' },
+            alt: { value: '', unit: prefs.altUnit || 'ft' }, notesBy: {}
         };
         if (c && c.resolvedAt) delete carry[a.serial];
         flights[r.id] = r;
         currentId = r.id;
         saveAll();
+        return r;
+    }
+
+    // Drafts saved by earlier builds: add the fields newer screens expect.
+    function upgradeRecord(r) {
+        if (!r.missions) r.missions = r.mission ? [r.mission] : [];
+        delete r.mission;
+        if (!r.risk || r.risk.v !== 2) r.risk = newRisk(); // the earlier 8-question score is not carried over
+        if (!r.tests) r.tests = {};
+        if (!r.payload) r.payload = { value: '', unit: prefs.payloadUnit || 'g' };
+        if (!r.batt) r.batt = { start: '', end: '' };
+        if (!r.alt) r.alt = r.altitude ? { value: String(r.altitude), unit: 'm' } : { value: '', unit: prefs.altUnit || 'ft' };
+        delete r.altitude;
+        if (!r.notesBy) r.notesBy = {};
+        if (r.pre && r.pre.fc) delete r.pre.fc; // retired checklist items
+        if (r.pre && r.pre.rc) delete r.pre.rc;
         return r;
     }
 
@@ -504,7 +673,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         if (!d) return;
         store.del(K.oldDraft);
         if (!(d.serial || d.notes || d.duration || d.card)) return;
-        var model = d.model || (settings.models || ['M1'])[0];
+        var model = d.model || (settings.models || [])[0] || 'Unknown';
         if (d.serial && !prefs.aircraft.some(function (a) { return a.serial === d.serial; })) {
             var a = { id: uuid(), model: model, serial: d.serial };
             prefs.aircraft.push(a);
@@ -522,7 +691,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
                 if (/^\d+$/.test(d.duration || '')) r.endAt = isoZ(new Date(s.getTime() + Number(d.duration) * 60000));
             }
         }
-        if (d.altitude) r.altitude = d.altitude;
+        if (d.altitude) r.alt = { value: String(d.altitude), unit: 'm' };
         r.outcome = { nominal: 'normal', anomaly: 'issue' }[d.outcome] || '';
         if (d.outcome === 'incident') r.notes = ('Previous app outcome: incident. ' + (r.notes || '')).trim();
         r.preAck = { migrated: true };
@@ -564,6 +733,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         return defs.map(function (d, i) {
             var it = item(r[key], d.id), t = (i + 1) + ' ' + d.short + ': ' + stLabel(it.s);
             if (it.note) t += ' (' + it.note + ')';
+            if (key === 'pre' && d.id === 'payload' && it.s === 'pass' && payloadText(r)) t += ' [' + payloadText(r) + ']';
             if (key === 'pre' && changedAfterStart(r, it)) t += ' [changed after start]';
             return t;
         }).join(' | ');
@@ -634,8 +804,13 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         if (r.endAt && new Date(r.endAt) > now + 120000) f.block.push({ text: 'End time is in the future.', step: 'times' });
         var dm = durMin(r);
         if (dm != null && dm > 12 * 60) f.warn.push({ text: 'Duration is over 12 hours. Check the times.', step: 'times' });
-        if (!r.mission) f.warn.push({ text: 'Mission type not set.', step: 'home' });
-        else if (r.mission === 'Other' && !r.missionOther) f.warn.push({ text: 'Mission is \u201cOther\u201d but not described.', step: 'home' });
+        if (!r.missions.length) f.warn.push({ text: 'No test type selected.', step: 'home' });
+        else if (r.missions.indexOf('Other') !== -1 && !r.missionOther) f.warn.push({ text: 'Test type \u201cOther\u201d is not described.', step: 'home' });
+        var rs = riskScore(r);
+        if (!rs.band && !(r.preAck && r.preAck.migrated)) f.warn.push({ text: 'Risk assessment not completed.', step: 'risk' });
+        if (rs.band === 'Red' && r.risk.override) f.warn.push({ text: 'Flown with a Red risk assessment (override: ' + clean(r.risk.override.reason) + ').', step: 'risk' });
+        var noResults = selectedTests(r).filter(function (t) { return t.fields.length && !Object.keys(r.tests[t.id] || {}).some(function (k) { return k.slice(-4) !== 'Unit' && r.tests[t.id][k] !== ''; }); });
+        if (noResults.length) f.warn.push({ text: 'No results entered for: ' + noResults.map(function (t) { return t.name; }).join(', ') + '.', step: 'outcome' });
         var c = counts(r, 'pre', PRE);
         if (c.none && !(r.preAck && r.preAck.migrated)) f.warn.push({ text: c.none + ' preflight item' + (c.none > 1 ? 's' : '') + ' not checked.', step: 'preflight' });
         if (PRE.some(function (d) { return changedAfterStart(r, item(r.pre, d.id)); })) f.warn.push({ text: 'Preflight results were changed after the flight started.', step: 'preflight' });
@@ -684,18 +859,21 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             time: fmtTime(s) + ' (' + utcOffset(s) + ')',
             start: r.startAt || '', end: r.endAt || '',
             duration: dm == null ? '' : String(Math.round(dm * 10) / 10),
+            elevation: elevText(loc),
             lat: loc && loc.lat != null ? String(loc.lat) : '', lng: loc && loc.lng != null ? String(loc.lng) : '', gps: gps,
             site: r.site, model: r.aircraft ? r.aircraft.model : '', serial: r.aircraft ? r.aircraft.serial : '',
             manufacturer: r.aircraft ? r.aircraft.manufacturer || '' : '', pilot: r.pilot || 'Same as submitter',
             mission: missionText(r), batteries: r.batteries, observer: r.observer,
-            altitude: r.altitude, outcome: outcomeText(r),
+            altitude: altText(r), outcome: outcomeText(r),
+            remoteid: { pass: 'On (broadcasting)', issue: 'Issue' + (item(r.pre, 'rid').note ? ': ' + item(r.pre, 'rid').note : ''), na: 'N/A' }[item(r.pre, 'rid').s] || 'Not checked',
+            risk: riskText(r), results: resultsText(r), payload: payloadText(r), battery: battText(r),
             issues: issueText(r), incident: inc,
             preflight: checklistText(r, 'pre', PRE), postcheck: checklistText(r, 'post', POST),
             open: open || 'None',
             wind: (w.wind || '') + (w.source === 'nws' && w.windSub ? ' (' + w.windSub + ')' : ''),
             temp: w.temp || '', humidity: w.humidity || '', conditions: w.cond || '', wxsource: wxsrc,
             observed: r.observed,
-            notes: [clean(r.notes), corr ? 'Time corrections: ' + corr : ''].filter(Boolean).join(' — ')
+            notes: [notesText(r), corr ? 'Time corrections: ' + corr : ''].filter(Boolean).join(' — ')
         };
     }
     function buildUrl(base, vals) {
@@ -715,7 +893,9 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         navigator.geolocation.getCurrentPosition(function (p) {
             if (cur() !== r) return;
             r.location = { lat: Number(p.coords.latitude.toFixed(6)), lng: Number(p.coords.longitude.toFixed(6)),
-                acc: p.coords.accuracy, at: isoZ(new Date()), source: 'phone' }; // maximumAge 0: a fresh fix
+                acc: p.coords.accuracy, at: isoZ(new Date()), source: 'phone', // maximumAge 0: a fresh fix
+                alt: p.coords.altitude == null ? null : Math.round(p.coords.altitude * 10) / 10,
+                altAcc: p.coords.altitudeAccuracy == null ? null : p.coords.altitudeAccuracy };
             ui.gps = '';
             touch(r);
             liveUpdate();
@@ -772,7 +952,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         // ~1 km precision is plenty for the nearest station and avoids sending exact site coordinates
         var rl = Math.round(loc.lat * 100) / 100, rg = Math.round(loc.lng * 100) / 100;
         ui.wx = 'loading';
-        liveUpdate();
+        liveUpdate(true);
         fetchJson('https://api.weather.gov/points/' + rl + ',' + rg)
             .then(function (pt) {
                 var url = pt && pt.properties && pt.properties.observationStations;
@@ -792,11 +972,11 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
                 else r.weather = w;
                 ui.wx = '';
                 touch(r);
-                liveUpdate();
+                liveUpdate(true);
             })
             .catch(function () {
                 ui.wx = navigator.onLine ? 'unavailable' : 'offline';
-                liveUpdate();
+                liveUpdate(true);
             });
     }
 
@@ -882,8 +1062,111 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
 
     // ---------- Screen 1: Home = flight setup (aircraft, crew, mission, location, weather) ----------
     function outcomeText(r) { var l = (byId(OUTCOMES, r.outcome) || {}).label || ''; var n = r.outcome !== 'normal' ? clean(r.outcomeNote) : ''; return l + (l && n ? ' \u2013 ' + n : ''); }
-    function missionText(r) { return r.mission === 'Other' && r.missionOther ? 'Other: ' + r.missionOther : r.mission || ''; }
+    function missionText(r) {
+        return (r.missions || []).map(function (m) { return m === 'Other' && r.missionOther ? 'Other: ' + r.missionOther : m; }).join('; ');
+    }
+    function selectedTests(r) { return TESTS.filter(function (t) { return (r.missions || []).indexOf(t.name) !== -1; }); }
+    var KG = { g: 0.001, kg: 1, oz: 0.0283495, lb: 0.453592 };
+    function payloadText(r) {
+        var v = Number(r.payload && r.payload.value), u = r.payload && r.payload.unit;
+        if (!r.payload || r.payload.value === '' || !isFinite(v) || !KG[u]) return '';
+        var kg = v * KG[u];
+        var other = (u === 'g' || u === 'kg') ? (kg / KG.lb).toFixed(2) + ' lb' : Math.round(kg * 1000) + ' g';
+        return v + ' ' + u + ' (' + other + ')';
+    }
+    function altFt(r) {
+        var v = Number(r.alt && r.alt.value);
+        if (!r.alt || r.alt.value === '' || !isFinite(v)) return null;
+        return r.alt.unit === 'm' ? v * 3.28084 : v;
+    }
+    function altText(r) {
+        var ft = altFt(r);
+        if (ft == null) return '';
+        return r.alt.unit === 'm' ? r.alt.value + ' m (' + Math.round(ft) + ' ft)' : r.alt.value + ' ft (' + Math.round(ft / 3.28084) + ' m)';
+    }
+    function battText(r) {
+        var a = r.batt && r.batt.start, b = r.batt && r.batt.end;
+        if (a === '' && b === '') return '';
+        if (a !== '' && b !== '') return a + '% \u2192 ' + b + '% (' + (Number(a) - Number(b)) + '% used)';
+        return a !== '' ? 'Start ' + a + '%' : 'Landed at ' + b + '%';
+    }
+    function newRisk() { return { v: 2, a: {}, hz: {}, override: null }; }
+    function hazard(r, id) { return r.risk.hz[id] || (r.risk.hz[id] = { d: '', s: '', l: 0, m: '', s2: '', l2: 0, ok: false }); }
+    // One identified hazard: its matrix cell before and after mitigation, and what is still missing.
+    function hazardEval(z) {
+        var b1 = matrixBand(z.l, z.s), mitig = b1 === 'Yellow' || b1 === 'Red';
+        var b2 = mitig ? matrixBand(z.l2, z.s2) : '';
+        var done = !!b1 && (!mitig || (!!clean(z.m) && !!b2 && z.ok));
+        return { b1: b1, b2: b2, mitig: mitig, final: mitig ? b2 : b1, done: done };
+    }
+    var BAND_RANK = { Green: 1, Yellow: 2, Red: 3 };
+    // Overall result is the highest risk left after mitigation (no hazards identified: Green).
+    function riskScore(r) {
+        var risk = r.risk || newRisk(), answered = 0, open = 0, worst = '', hazards = [];
+        RISK_ITEMS.forEach(function (it) {
+            var a = risk.a[it.id];
+            if (!a) return;
+            answered++;
+            if (a !== 'haz') return;
+            var e = hazardEval(risk.hz[it.id] || {});
+            hazards.push({ it: it, e: e });
+            if (!e.done) open++;
+            if (e.final && (!worst || BAND_RANK[e.final] > BAND_RANK[worst])) worst = e.final;
+        });
+        var complete = answered === RISK_ITEMS.length && !open;
+        return { band: complete ? (worst || 'Green') : '', answered: answered, total: RISK_ITEMS.length, open: open, hazards: hazards };
+    }
+    function cellText(l, s) { return l + s + ' ' + matrixBand(l, s); }
+    function riskText(r) {
+        var sc = riskScore(r);
+        if (!sc.band) return sc.answered ? 'Incomplete' : '';
+        var t = sc.band;
+        if (sc.band === 'Red' && r.risk.override) t += ' – proceeded with override: ' + clean(r.risk.override.reason);
+        if (!sc.hazards.length) return t + ' · PAVE: no hazards identified';
+        return t + ' · Hazards: ' + sc.hazards.map(function (x) {
+            var z = (r.risk.hz[x.it.id] || {}), d = clean(z.d);
+            var line = '[' + x.it.cat + '] ' + x.it.short + (d ? ' (' + d + ')' : '') + ': ' + cellText(z.l, z.s);
+            if (x.e.mitig) line += ', mitigated: ' + clean(z.m) + ' → ' + cellText(z.l2, z.s2);
+            return line;
+        }).join('; ');
+    }
+    function testVal(r, t, f) { var v = r.tests[t.id] && r.tests[t.id][f.k]; return v == null ? '' : v; }
+    function resultsText(r) {
+        return selectedTests(r).map(function (t) {
+            var tr = r.tests[t.id] || {}, parts = [];
+            if (t.id === 'tl' && tr.attempts !== '' && tr.attempts != null && tr.success !== '' && tr.success != null) {
+                var pct = Number(tr.attempts) > 0 ? Math.round(Number(tr.success) / Number(tr.attempts) * 100) : 0;
+                parts.push(tr.success + '/' + tr.attempts + ' successful (' + pct + '%)');
+                if (tr.streak !== '' && tr.streak != null) parts.push('longest run ' + tr.streak);
+            } else if (t.id === 'payload') {
+                if (payloadText(r)) parts.push(payloadText(r));
+                if (tr.handling) parts.push('handling ' + tr.handling + '/5');
+            } else if (t.id === 'endur') {
+                var dm = durMin(r);
+                if (dm != null) parts.push(Math.round(dm * 10) / 10 + ' min');
+                if (battText(r)) parts.push('battery ' + battText(r));
+            } else {
+                t.fields.forEach(function (f) {
+                    var v = testVal(r, t, f);
+                    if (v === '' || v == null) return;
+                    var u = f.type === 'unit' ? (tr[f.k + 'Unit'] || f.units[0]) : '';
+                    parts.push((f.s || f.label + ' {v}').replace('{v}', clean(String(v))).replace('{u}', u));
+                });
+            }
+            return t.name + ': ' + (parts.length ? parts.join(', ') : 'no results entered');
+        }).join(' | ');
+    }
+    var NOTE_SECTIONS = [['preflight', 'Preflight'], ['risk', 'Risk'], ['flight', 'In flight'], ['postflight', 'Postflight'], ['inspection', 'Inspection']];
+    function notesText(r) {
+        var out = NOTE_SECTIONS.filter(function (x) { return clean(r.notesBy[x[0]]); }).map(function (x) { return x[1] + ': ' + clean(r.notesBy[x[0]]); });
+        if (clean(r.notes)) out.push('Flight notes: ' + clean(r.notes));
+        return out.join(' | ');
+    }
     function aircraftName(a) { return a ? [a.manufacturer, a.model].filter(Boolean).join(' ') : ''; }
+    function elevText(loc) {
+        if (!loc || loc.alt == null) return '';
+        return Math.round(loc.alt) + ' m (' + Math.round(loc.alt * 3.28084) + ' ft)' + (loc.altAcc != null ? ', \u00b1' + Math.round(loc.altAcc) + ' m' : '') + (loc.source === 'manual' ? ', entered' : '');
+    }
     function locPanel(r) {
         var loc = r.location;
         var gpsChip = ui.gps === 'locating' ? 'locating…' : ui.gps === 'denied' ? 'permission denied' : ui.gps === 'unavailable' ? 'unavailable' : ui.gps === 'unsupported' ? 'not supported'
@@ -893,8 +1176,10 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             body.push(h('div', { class: 'readouts' },
                 h('div', { class: 'readout' }, h('div', { class: 'k', text: 'Latitude' }), h('div', { class: 'v', id: 'loc-lat', text: String(loc.lat) })),
                 h('div', { class: 'readout' }, h('div', { class: 'k', text: 'Longitude' }), h('div', { class: 'v', id: 'loc-lng', text: String(loc.lng) })),
-                h('div', { class: 'readout wide' }, h('div', { class: 'k', text: 'Accuracy' }), h('div', { class: 'v', text: '±' + Math.round(loc.acc) + ' m' }),
-                    h('div', { class: 'sub', text: 'Captured ' + fmtTime(new Date(loc.at)) + '. This is the phone’s position, not a verified takeoff point.' }))));
+                h('div', { class: 'readout' }, h('div', { class: 'k', text: 'Accuracy' }), h('div', { class: 'v', text: '±' + Math.round(loc.acc) + ' m' })),
+                h('div', { class: 'readout' }, h('div', { class: 'k', text: 'Altitude' }), h('div', { class: 'v', id: 'loc-alt', text: loc.alt == null ? 'not reported' : Math.round(loc.alt) + ' m' }),
+                    h('div', { class: 'sub', text: loc.alt == null ? 'The phone didn\u2019t give an altitude' : Math.round(loc.alt * 3.28084) + ' ft' + (loc.altAcc != null ? ', \u00b1' + Math.round(loc.altAcc) + ' m' : '') })),
+                h('div', { class: 'readout wide' }, h('div', { class: 'sub', text: 'Captured ' + fmtTime(new Date(loc.at)) + '. This is the phone\u2019s position and altitude, not a verified takeoff point.' }))));
             if (loc.acc > 100) body.push(h('div', { class: 'hint warn', text: 'Poor accuracy. Try again in the open, or enter the position by hand.' }));
         } else if (loc && loc.source === 'none') {
             body.push(h('div', { class: 'hint', id: 'loc-none', text: 'Location will be logged as not recorded.' }));
@@ -905,22 +1190,24 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             var manual = loc && loc.source === 'manual';
             var latI = h('input', { class: 'mono', id: 'f-lat', inputmode: 'decimal', autocomplete: 'off', value: manual && loc.lat != null ? String(loc.lat) : '' });
             var lngI = h('input', { class: 'mono', id: 'f-lng', inputmode: 'decimal', autocomplete: 'off', value: manual && loc.lng != null ? String(loc.lng) : '' });
+            var altI = h('input', { class: 'mono', id: 'f-elev', inputmode: 'decimal', autocomplete: 'off', placeholder: 'optional', value: manual && loc.alt != null ? String(loc.alt) : '' });
             var msg = h('div', { class: 'hint', id: 'loc-msg' });
             var saveManual = function () {
                 if (latI.value === '' || lngI.value === '') return;
-                var la = Number(latI.value), ln = Number(lngI.value);
+                var la = Number(latI.value), ln = Number(lngI.value), al = altI.value.trim() === '' ? null : Number(altI.value);
                 if (!isFinite(la) || !isFinite(ln) || la < -90 || la > 90 || ln < -180 || ln > 180) {
                     msg.textContent = 'Latitude −90 to 90, longitude −180 to 180.'; msg.className = 'hint warn'; return;
                 }
+                if (al != null && (!isFinite(al) || al < -500 || al > 9000)) { msg.textContent = 'Altitude in metres, −500 to 9000.'; msg.className = 'hint warn'; return; }
                 msg.textContent = 'Saved as entered by you.'; msg.className = 'hint';
-                r.location = { lat: la, lng: ln, source: 'manual', at: isoZ(new Date()) };
+                r.location = { lat: la, lng: ln, alt: al, altAcc: null, source: 'manual', at: isoZ(new Date()) };
                 touch(r);
             };
-            latI.addEventListener('input', saveManual); lngI.addEventListener('input', saveManual);
+            latI.addEventListener('input', saveManual); lngI.addEventListener('input', saveManual); altI.addEventListener('input', saveManual);
             // look up weather once the pilot finishes typing a position
             var wxOnBlur = function () { if (r.location && r.location.source === 'manual' && !r.weather && !r.startAt) getWeather(r); };
             latI.addEventListener('change', wxOnBlur); lngI.addEventListener('change', wxOnBlur);
-            body.push(h('div', { class: 'row2' }, field('Latitude', latI), field('Longitude', lngI)), msg);
+            body.push(h('div', { class: 'row2' }, field('Latitude', latI), field('Longitude', lngI)), field('Altitude (m)', altI), msg);
         }
         body.push(h('div', { class: 'actions-row' },
             h('button', { class: 'link-btn left', type: 'button', id: 'btn-gps', disabled: !!r.startAt, onclick: function () { ui.showManualLoc = false; getPosition(r); } }, loc && loc.source === 'phone' ? 'Get position again' : 'Use phone location'),
@@ -963,12 +1250,12 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         return p;
     }
     // GPS and weather arrive while the pilot may be typing: refresh only those two panels.
-    function liveUpdate() {
+    function liveUpdate(wxOnly) {
         if (ui.view !== 'home') return;
         var r = cur();
         if (!r) return;
         var a = $('panel-loc'), b = $('panel-wx');
-        if (a) a.replaceWith(locPanel(r));
+        if (a && !wxOnly) a.replaceWith(locPanel(r)); // a weather update never rebuilds the location boxes being typed in
         if (b) b.replaceWith(wxPanel(r));
     }
     function discardFlight(r) {
@@ -1021,29 +1308,36 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         add(view, panel('Aircraft', h('button', { class: 'link-btn', type: 'button', id: 'btn-aircraft', disabled: started, onclick: function () { ui.aircraftReturn = 'home'; go('aircraft'); } }, r.aircraft ? 'Change' : 'Add'),
             r.aircraft ? h('div', { class: 'readout wide' }, h('div', { class: 'k', text: aircraftName(r.aircraft) }), h('div', { class: 'v', id: 'home-aircraft', text: r.aircraft.serial || '(no serial)' }))
                 : h('div', { class: 'hint warn', id: 'no-aircraft', text: 'No aircraft selected. Add your aircraft so you don’t retype it each flight.' }),
-            field('Battery IDs', h('input', { class: 'mono', id: 'f-batteries', maxlength: 120, autocomplete: 'off', autocapitalize: 'characters', placeholder: 'B12, B13', value: r.batteries,
-                oninput: function () { r.batteries = clean(this.value); touch(r); } }))));
+            h('div', { class: 'row2' },
+                field('Battery IDs', h('input', { class: 'mono', id: 'f-batteries', maxlength: 120, autocomplete: 'off', autocapitalize: 'characters', placeholder: 'B12, B13', value: r.batteries,
+                    oninput: function () { r.batteries = clean(this.value); touch(r); } })),
+                field('Battery % at start', intInput('f-batt-start', r.batt.start, 100, function (v) { r.batt.start = v; touch(r); }, 'optional'))),
+            h('div', { class: 'hint', text: 'Battery % comes from your ground-control software. Leave it blank if you don\u2019t have it.' })));
         add(view, panel('Crew', null, h('div', { class: 'row2' },
             field('Pilot in command', h('input', { id: 'f-pilot', maxlength: 80, autocomplete: 'off', value: r.pilot, placeholder: 'If not you',
                 oninput: function () { r.pilot = clean(this.value); touch(r); } })),
             field('Spotter / visual observer', h('input', { id: 'f-observer', maxlength: 80, autocomplete: 'off', value: r.observer,
                 oninput: function () { r.observer = clean(this.value); prefs.observer = r.observer; touch(r); } }))),
             h('div', { class: 'hint', text: 'Skip Pilot in command if you\u2019re the pilot: the form already records who submits it.' })));
-        var otherIn = h('input', { id: 'f-mission-other', maxlength: 80, autocomplete: 'off', placeholder: 'What is the mission?', value: r.missionOther || '',
+        var otherIn = h('input', { id: 'f-mission-other', maxlength: 80, autocomplete: 'off', placeholder: 'What are you testing?', value: r.missionOther || '',
             oninput: function () { r.missionOther = clean(this.value); prefs.missionOther = r.missionOther; touch(r); } });
-        var otherBox = field('Describe the mission', otherIn);
-        otherBox.classList.toggle('hidden', r.mission !== 'Other');
-        add(view, panel('Mission', null,
-            h('div', { class: 'chips', role: 'radiogroup', 'aria-label': 'Mission type' }, MISSIONS.map(function (m) {
-                return h('button', { class: 'opt', type: 'button', role: 'radio', 'aria-checked': String(r.mission === m), onclick: function (e) {
-                    r.mission = m; prefs.mission = m; touch(r);
-                    e.currentTarget.parentNode.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', String(b === e.currentTarget)); });
-                    otherBox.classList.toggle('hidden', m !== 'Other');
-                    if (m === 'Other') otherIn.focus();
+        var otherBox = field('Describe the test', otherIn);
+        otherBox.classList.toggle('hidden', r.missions.indexOf('Other') === -1);
+        add(view, panel('Test type', h('span', { class: 'chip', text: 'pick all that apply' }),
+            h('div', { class: 'chips', role: 'group', 'aria-label': 'Test type' }, MISSIONS.map(function (m) {
+                return h('button', { class: 'opt', type: 'button', 'aria-pressed': String(r.missions.indexOf(m) !== -1), 'data-m': m, onclick: function (e) {
+                    var on = r.missions.indexOf(m) !== -1;
+                    r.missions = on ? r.missions.filter(function (x) { return x !== m; }) : r.missions.concat([m]);
+                    prefs.missions = r.missions.slice();
+                    touch(r);
+                    e.currentTarget.setAttribute('aria-pressed', String(!on));
+                    otherBox.classList.toggle('hidden', r.missions.indexOf('Other') === -1);
+                    if (m === 'Other' && !on) otherIn.focus();
                 } }, h('span', { class: 'dot' }), m);
             })),
+            h('div', { class: 'hint', text: 'Each test you pick adds its own result questions after the flight.' }),
             otherBox,
-            field('Site', h('input', { id: 'f-site', maxlength: 120, autocomplete: 'off', placeholder: 'e.g. Riverside Park, north field', value: r.site,
+            field('Site', h('input', { id: 'f-site', maxlength: 120, autocomplete: 'off', placeholder: 'e.g. North field', value: r.site,
                 oninput: function () { r.site = clean(this.value); prefs.site = r.site; touch(r); } }))));
         add(view, locPanel(r));
         add(view, wxPanel(r));
@@ -1058,9 +1352,9 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         add(view, h('div', { class: 'hint', text: 'Record created ' + fmtTime(new Date(r.createdAt)) + ' ' + utcOffset(new Date(r.createdAt)) + (r.tz ? ' (' + r.tz + ')' : '') + '. Flight ID ' + r.id.slice(0, 8) + '.' }));
 
         if (editing) primary(dock, 'Back to review', backToReview, { id: 'btn-continue' });
-        else primary(dock, r.step === 'preflight' ? 'Continue to Preflight' : 'Start Flight', function () {
+        else primary(dock, r.step === 'preflight' ? 'Continue to Preflight' : r.step === 'risk' ? 'Continue to Risk Assessment' : 'Start Flight', function () {
             if (!r.aircraft) { ui.aircraftReturn = 'home'; go('aircraft'); return; }
-            go('preflight');
+            go(r.step === 'risk' ? 'risk' : 'preflight');
         }, { id: 'btn-start', big: true });
 
         // capture location and weather automatically (the permission prompt appears in context)
@@ -1096,7 +1390,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var mfrs = uniq(prefs.aircraft.map(function (a) { return a.manufacturer; }).concat(MANUFACTURERS));
         var models = uniq((settings.models || []).concat(prefs.aircraft.map(function (a) { return a.model; })));
         var mfr = h('input', { id: 'a-mfr', list: 'dl-mfr', maxlength: 60, autocomplete: 'off', placeholder: 'e.g. DJI' });
-        var mod = h('input', { id: 'a-model', list: 'dl-model', maxlength: 60, autocomplete: 'off', placeholder: 'Type or pick, e.g. Mini 4 Pro' });
+        var mod = h('input', { id: 'a-model', list: 'dl-model', maxlength: 60, autocomplete: 'off', placeholder: 'Type or pick a model' });
         var ser = h('input', { class: 'mono', id: 'a-serial', maxlength: 60, autocomplete: 'off', autocapitalize: 'characters' });
         var msg = h('div', { class: 'hint', id: 'a-msg' });
         add(view, panel('Add aircraft', null,
@@ -1150,6 +1444,15 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             more.push(h('input', { 'aria-label': d.label + ' note', placeholder: it.s === 'issue' ? 'What did you find? (optional)' : 'Note (optional)', maxlength: 200, value: it.note || '', autocomplete: 'off',
                 oninput: function () { var cur0 = item(r[key], d.id); cur0.note = clean(this.value); r[key][d.id] = cur0; touch(r); } }));
         }
+        if (key === 'pre' && d.id === 'payload' && it.s === 'pass') {
+            var wIn = h('input', { class: 'mono', id: 'f-payload', inputmode: 'decimal', maxlength: 8, autocomplete: 'off', placeholder: 'Weight', value: r.payload.value,
+                'aria-label': 'Payload weight', oninput: function () {
+                    var ok = this.value === '' || (isFinite(Number(this.value)) && Number(this.value) >= 0);
+                    this.setAttribute('aria-invalid', String(!ok));
+                    r.payload.value = ok ? this.value.trim() : ''; touch(r);
+                } });
+            more.push(h('div', { class: 'row2' }, wIn, unitSelect('f-payload-unit', ['g', 'kg', 'oz', 'lb'], r.payload.unit, function (u) { r.payload.unit = u; prefs.payloadUnit = u; touch(r); })));
+        }
         if (it.s === 'issue' && d.crit && key === 'pre') more.push(h('div', { class: 'hint bad', text: 'Critical. Fix it and mark Pass, or follow your operating procedure. The issue stays on record.' }));
         if (more.length) add(row, h('div', { class: 'ck-more' }, more));
         return row;
@@ -1183,9 +1486,10 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             add(box, checkRow(r, 'pre', d));
         });
         add(view, box);
-        primary(dock, fromReview() ? 'Back to review' : 'Start Flight Timer', function () {
+        add(view, notesBox(r, 'preflight', 'Preflight notes'));
+        primary(dock, fromReview() ? 'Back to review' : 'Continue to Risk Assessment', function () {
             var cc = counts(r, 'pre', PRE);
-            var next = function () { if (fromReview()) backToReview(); else startTimer(r); };
+            var next = function () { if (fromReview()) backToReview(); else go('risk'); };
             var afterCrit = function () {
                 if (!cc.none) { next(); return; }
                 var names = PRE.filter(function (d) { return !item(r.pre, d.id).s; }).map(function (d) { return d.label; });
@@ -1204,11 +1508,127 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         }, { id: 'btn-continue', big: !fromReview() });
     };
 
+    // ---------- Screen 3: Risk assessment (PAVE hazards on the AC 107-2 risk matrix) ----------
+    var BAND_CLS = { Green: 'ok', Yellow: 'warn', Red: 'bad' };
+    var BAND_MEANS = { Green: 'Acceptable', Yellow: 'Acceptable with mitigation', Red: 'Unacceptable' };
+    function bandTag(l, s, id) {
+        var b = matrixBand(l, s);
+        return b ? h('span', { class: 'tag band-' + BAND_CLS[b], id: id, text: l + s + ' · ' + b + ' · ' + BAND_MEANS[b] }) : null;
+    }
+    function matrixTable(sc, r) {
+        var used = {};
+        sc.hazards.forEach(function (x) { var z = (r.risk.hz[x.it.id] || {}); if (z.l && z.s) used[z.l + z.s] = 1; if (z.l2 && z.s2) used[z.l2 + z.s2] = 1; });
+        return h('table', { class: 'matrix', id: 'risk-matrix' },
+            h('tr', null, h('th', { text: 'Likelihood \\ Severity' }), SEVERITY.map(function (s) { return h('th', { text: s.v + ' ' + s.name }); })),
+            LIKELIHOOD.map(function (l) {
+                return h('tr', null, h('th', { text: l.v + ' ' + l.name }), SEVERITY.map(function (s) {
+                    var c = l.v + s.v;
+                    return h('td', { class: 'mx-' + BAND_CLS[matrixBand(l.v, s.v)] + (used[c] ? ' used' : ''), text: c });
+                }));
+            }));
+    }
+    function sevLikPicker(prefix, z, sk, lk, onSet) {
+        var sel = SEVERITY.filter(function (x) { return x.v === z[sk]; })[0], lsel = LIKELIHOOD.filter(function (x) { return x.v === z[lk]; })[0];
+        return [
+            h('div', { class: 'sub-q', text: 'Severity, if it happens' }),
+            chipChoice(prefix + '-' + sk, SEVERITY.map(function (x) { return { v: x.v, l: x.v + ' ' + x.name }; }), z[sk], function (v) { z[sk] = v; onSet(); }, 'Severity'),
+            sel ? h('div', { class: 'hint', text: sel.name + ': ' + sel.def }) : null,
+            h('div', { class: 'sub-q', text: 'Likelihood' }),
+            chipChoice(prefix + '-' + lk, LIKELIHOOD.map(function (x) { return { v: x.v, l: x.v + ' ' + x.name }; }), z[lk], function (v) { z[lk] = v; onSet(); }, 'Likelihood'),
+            lsel ? h('div', { class: 'hint', text: lsel.name + ': ' + lsel.def }) : null
+        ];
+    }
+    VIEWS.risk = function (top, view, dock) {
+        var r = cur();
+        if (!r) { go('home'); return; }
+        header(top, 'Risk assessment', fromReview() ? backToReview : function () { go('preflight'); }, 'risk');
+        var redraw = function () { touch(r); render(); };
+        var sc = riskScore(r);
+        var left = sc.total - sc.answered;
+        add(view, h('div', { class: 'banner ' + (BAND_CLS[sc.band] || 'warn'), id: 'risk-band' },
+            h('strong', { text: sc.band ? sc.band + ' · ' + BAND_MEANS[sc.band] + (sc.hazards.length ? ' (' + sc.hazards.length + ' hazard' + (sc.hazards.length > 1 ? 's' : '') + ')' : ' (no hazards)')
+                : left ? left + ' of ' + sc.total + ' questions left' : sc.open + ' hazard' + (sc.open > 1 ? 's' : '') + ' still to rate' }),
+            h('div', { text: sc.band === 'Green' ? 'Go.' : sc.band === 'Yellow' ? 'Go, using the mitigations you recorded.'
+                : sc.band === 'Red' ? 'No-go. Change the plan to bring every hazard out of Red, or record why you’re proceeding.'
+                : 'Answer each PAVE question. Any “No” is a hazard: rate it on the FAA risk matrix.' })));
+        add(view, h('details', { class: 'hint how' }, h('summary', { text: 'How this works (FAA AC 107-2, Appendix A)' }),
+            h('ol', null,
+                h('li', { text: 'Identify hazards with the PAVE checklist: Pilot (IMSAFE), Aircraft, enVironment, External pressures.' }),
+                h('li', { text: 'For each hazard, pick its severity and likelihood (Table A-1). The matrix (Table A-2) gives its risk.' }),
+                h('li', { text: 'Yellow or Red: develop a mitigation, rate the risk again with it in place, and check it creates no new hazards (Figure A-1).' }),
+                h('li', { text: 'The result is the highest risk left. Green: acceptable. Yellow: acceptable with mitigation. Red: unacceptable.' })),
+            matrixTable(sc, r)));
+        var pc = counts(r, 'pre', PRE);
+        RISK.forEach(function (cat) {
+            var p = panel(cat.id + ' · ' + cat.name, h('button', { class: 'link-btn', type: 'button', id: 'risk-all-' + cat.id, onclick: function () {
+                cat.items.forEach(function (it) { if (!r.risk.a[it.id]) r.risk.a[it.id] = 'ok'; });
+                redraw();
+            } }, 'All yes'));
+            p.id = 'risk-cat-' + cat.id;
+            add(p, h('div', { class: 'hint', text: cat.help }));
+            cat.items.forEach(function (it) {
+                add(p, h('p', { class: 'big-q', id: 'rq-' + it.id, text: it.q }));
+                if (it.id === 'condition' && pc.issue) add(p, h('div', { class: 'hint ' + (pc.critIssue.length ? 'bad' : 'warn'),
+                    text: 'The preflight checklist has ' + pc.issue + ' issue' + (pc.issue > 1 ? 's' : '') + (pc.critIssue.length ? ', ' + pc.critIssue.length + ' critical' : '') + '.' }));
+                add(p, chipChoice('risk-' + it.id, [{ v: 'ok', l: 'Yes' }, { v: 'haz', l: 'No · hazard' }], r.risk.a[it.id], function (v) {
+                    r.risk.a[it.id] = v; redraw();
+                }, it.short, function (j) { return j ? 'warn' : ''; }));
+                if (r.risk.a[it.id] !== 'haz') return;
+                var z = hazard(r, it.id), e = hazardEval(z), pre = 'hz-' + it.id;
+                var box = h('div', { class: 'hazard', id: pre });
+                add(box, field('What’s the hazard? (optional)', h('input', { id: pre + '-d', maxlength: 120, value: z.d, placeholder: 'e.g. gusts to 20 kt', oninput: function () { z.d = this.value; touch(r); } })));
+                add(box, sevLikPicker(pre, z, 's', 'l', redraw));
+                add(box, h('div', { class: 'risk-cell' }, bandTag(z.l, z.s, pre + '-band')));
+                if (e.mitig) {
+                    add(box, field('Mitigation: how will you reduce this risk?', h('textarea', { id: pre + '-m', maxlength: 300, rows: 2, value: z.m,
+                        placeholder: 'e.g. wait for gusts to drop, add a visual observer, move away from people', oninput: function () { z.m = this.value; touch(r); } }), true));
+                    add(box, h('div', { class: 'sub-q strong', text: 'Risk with the mitigation in place' }));
+                    add(box, sevLikPicker(pre, z, 's2', 'l2', redraw));
+                    add(box, h('div', { class: 'risk-cell' }, bandTag(z.l2, z.s2, pre + '-band2')));
+                    add(box, h('button', { class: 'opt multi', type: 'button', id: pre + '-ok', 'aria-pressed': String(!!z.ok), onclick: function () { z.ok = !z.ok; redraw(); } },
+                        h('span', { class: 'dot' }), 'I checked that the mitigation doesn’t create new hazards'));
+                }
+                add(p, box);
+            });
+            add(view, p);
+        });
+        if (r.risk.override) add(view, h('div', { class: 'banner bad', id: 'risk-override' }, 'Override recorded: ' + clean(r.risk.override.reason)));
+        add(view, notesBox(r, 'risk', 'Risk notes'));
+        var askOverride = function (msg) {
+            var ta = h('textarea', { id: 'risk-override-reason', maxlength: 300, rows: 3, placeholder: 'Why it’s acceptable to fly, and who agreed' });
+            sheet('Red risk: no-go', [h('p', { text: 'At least one hazard is still Red after mitigation. On the FAA matrix that’s unacceptable. Change the plan and rate it again, or record why you’re proceeding. The override is logged and shown on the dashboard.' }),
+                msg ? h('p', { class: 'hint bad', text: msg }) : null, field('Reason for proceeding', ta, true)],
+                [{ label: 'Go back and change', primary: true },
+                 { label: 'Proceed with override', danger: true, fn: function () {
+                     if (!clean(ta.value)) { askOverride('A reason is required.'); return; }
+                     r.risk.override = { reason: clean(ta.value), at: isoZ(new Date()) }; touch(r);
+                     if (fromReview()) backToReview(); else startTimer(r);
+                 } }]);
+        };
+        primary(dock, fromReview() ? 'Back to review' : 'Start Flight Timer', function () {
+            var cur2 = riskScore(r);
+            if (!cur2.band) {
+                var firstQ = RISK_ITEMS.filter(function (it) { return !r.risk.a[it.id]; })[0];
+                var firstHz = cur2.hazards.filter(function (x) { return !x.e.done; })[0];
+                var msg = firstQ ? 'Answer every PAVE question (' + (cur2.total - cur2.answered) + ' left).'
+                    : 'Finish rating “' + firstHz.it.short + '”: severity and likelihood' + (firstHz.e.mitig ? ', a mitigation, the risk with it in place, and the new-hazards check.' : '.');
+                sheet('Finish the risk assessment', h('p', { text: msg }), [{ label: 'OK', primary: true, fn: function () {
+                    var el = $(firstQ ? 'rq-' + firstQ.id : 'hz-' + firstHz.it.id); if (el) el.scrollIntoView({ block: 'center' });
+                } }]);
+                return;
+            }
+            if (cur2.band !== 'Red') r.risk.override = null;
+            if (cur2.band === 'Red' && !r.risk.override) { askOverride(''); return; }
+            touch(r);
+            if (fromReview()) backToReview(); else startTimer(r);
+        }, { id: 'btn-continue', big: !fromReview() });
+    };
+
     // ---------- Screen 4: Active flight ----------
     VIEWS.active = function (top, view, dock) {
         var r = cur();
         if (!r) { go('home'); return; }
-        if (!r.startAt) { go('preflight'); return; }
+        if (!r.startAt) { go('risk'); return; }
         if (r.endAt) { go('outcome'); return; }
         header(top, 'Flight in progress', null, 'active');
         var t = h('div', { class: 'timer', id: 'timer', role: 'timer', 'aria-live': 'off' });
@@ -1228,10 +1648,11 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             h('dt', { text: 'Aircraft' }), h('dd', { text: r.aircraft ? r.aircraft.model + ' · ' + (r.aircraft.serial || '—') : '—' }),
             h('dt', { text: 'Mission' }), h('dd', { text: missionText(r) || '—' }),
             h('dt', { text: 'Site' }), h('dd', { text: r.site || '—' }))));
+        add(view, notesBox(r, 'flight', 'In-flight notes'));
         add(view, h('div', { class: 'hint', text: 'This is a logging timer only. It doesn’t connect to the aircraft or detect takeoff and landing.' }));
         add(view, h('button', { class: 'link-btn left', type: 'button', id: 'btn-undo-start', onclick: function () {
-            sheet('Started by mistake?', h('p', { text: 'Clears the start time and returns to the preflight checklist.' }),
-                [{ label: 'Keep timer running', primary: true }, { label: 'Clear start time', danger: true, fn: function () { r.startAt = null; touch(r); go('preflight'); } }]);
+            sheet('Started by mistake?', h('p', { text: 'Clears the start time and returns to the risk assessment.' }),
+                [{ label: 'Keep timer running', primary: true }, { label: 'Clear start time', danger: true, fn: function () { r.startAt = null; touch(r); go('risk'); } }]);
         } }, 'Started by mistake?'));
         tick();
         ui.timer = setInterval(tick, 1000);
@@ -1306,17 +1727,50 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
                 r.incident.harm === 'yes' ? h('div', { class: 'hint bad', text: 'Under FAA Part 107, serious injury or property damage over $500 (other than the aircraft) must be reported to the FAA within 10 days. Follow your organization’s procedure.' }) : null));
         }
 
-        var altI = h('input', { class: 'mono', id: 'f-altitude', inputmode: 'numeric', maxlength: 4, autocomplete: 'off', value: r.altitude });
+        // Results for each test type picked on Home
+        selectedTests(r).forEach(function (t) {
+            if (!r.tests[t.id]) r.tests[t.id] = {};
+            var tr = r.tests[t.id], body = [];
+            if (t.note) body.push(h('div', { class: 'hint', text: t.note }));
+            if (t.id === 'payload') body.push(h('div', { class: 'hint', id: 'res-payload-weight', text: payloadText(r) ? 'Payload weight: ' + payloadText(r) + ' (from the preflight check)' : 'Payload weight: not entered. Add it on the preflight Payload check.' }));
+            t.fields.forEach(function (f) {
+                var id = 'res-' + t.id + '-' + f.k, set = function (v) { tr[f.k] = v; touch(r); };
+                if (f.type === 'int') body.push(field(f.label, intInput(id, tr[f.k], 99999, set)));
+                else if (f.type === 'text') body.push(field(f.label, h('input', { id: id, maxlength: 120, autocomplete: 'off', value: tr[f.k] || '', oninput: function () { set(clean(this.value)); } })));
+                else if (f.type === 'choice') body.push(h('label', { class: 'f' }, h('span', { text: f.label })), chipChoice(id, f.opts, tr[f.k], set, f.label));
+                else if (f.type === 'rating') body.push(h('label', { class: 'f' }, h('span', { text: f.label + ' (1 = ' + f.lo + ', 5 = ' + f.hi + ')' })),
+                    chipChoice(id, [1, 2, 3, 4, 5], tr[f.k], set, f.label));
+                else if (f.type === 'unit') {
+                    var num = h('input', { class: 'mono', id: id, inputmode: 'decimal', maxlength: 8, autocomplete: 'off', value: tr[f.k] || '', 'aria-label': f.label, oninput: function () {
+                        var ok = this.value === '' || (isFinite(Number(this.value)) && Number(this.value) >= 0);
+                        this.setAttribute('aria-invalid', String(!ok)); set(ok ? this.value.trim() : '');
+                    } });
+                    body.push(field(f.label, h('div', { class: 'row2' }, num, unitSelect(id + '-unit', f.units, tr[f.k + 'Unit'], function (u) { tr[f.k + 'Unit'] = u; touch(r); }))));
+                }
+            });
+            if (t.id === 'tl') body.push(h('div', { class: 'hint', text: 'Count each takeoff-and-landing cycle as one attempt.' }));
+            if (body.length) add(view, panel('Results · ' + t.name, null, body));
+        });
+
+        // Battery at landing and highest point above takeoff
+        var altUnit = r.alt.unit || 'ft';
+        var altI = h('input', { class: 'mono', id: 'f-altitude', inputmode: 'numeric', maxlength: 5, autocomplete: 'off', value: r.alt.value, 'aria-label': 'Highest point above takeoff' });
         var altHint = h('div', { class: 'hint', id: 'alt-hint' });
         var upd = function () {
-            var a = Number(altI.value);
-            if (!altI.value || !/^\d{1,4}$/.test(altI.value)) { altHint.textContent = altI.value ? 'Whole metres only.' : ''; altHint.className = 'hint'; return; }
-            altHint.textContent = '≈ ' + Math.round(a * 3.28084) + ' ft AGL' + (a > ALT_LIMIT_M ? '. Above 400 ft, so note the waiver or authorization.' : '');
-            altHint.className = 'hint' + (a > ALT_LIMIT_M ? ' warn' : '');
+            var ft = altFt(r);
+            if (altI.value && ft == null) { altHint.textContent = 'Whole numbers only.'; altHint.className = 'hint warn'; return; }
+            if (ft == null) { altHint.textContent = 'Read it from your controller or app: the height above the spot you took off from.'; altHint.className = 'hint'; return; }
+            altHint.textContent = (r.alt.unit === 'm' ? '≈ ' + Math.round(ft) + ' ft' : '≈ ' + Math.round(ft / 3.28084) + ' m') + ' above takeoff' + (ft > 400 ? '. Above 400 ft, so note the waiver or authorization.' : '');
+            altHint.className = 'hint' + (ft > 400 ? ' warn' : '');
         };
-        altI.addEventListener('input', function () { r.altitude = /^\d{1,4}$/.test(altI.value) ? altI.value : ''; touch(r); upd(); });
+        altI.addEventListener('input', function () { r.alt.value = /^\d{1,5}$/.test(altI.value) ? altI.value : ''; touch(r); upd(); });
         upd();
-        add(view, panel('Optional', null, field('Max altitude, your estimate (m AGL)', altI), altHint));
+        var altUnits = chipChoice('f-alt-unit', ['ft', 'm'], altUnit, function (u) { r.alt.unit = u; prefs.altUnit = u; touch(r); upd(); }, 'Altitude unit');
+        add(view, panel('Flight data (optional)', null,
+            field('Highest point above takeoff', h('div', { class: 'row2' }, altI, altUnits)), altHint,
+            field('Battery % at landing', intInput('f-batt-end', r.batt.end, 100, function (v) { r.batt.end = v; touch(r); }, 'from your ground-control software')),
+            r.batt.start !== '' ? h('div', { class: 'hint', text: 'Battery at start: ' + r.batt.start + '%' }) : null));
+        add(view, notesBox(r, 'postflight', 'Postflight notes'));
 
         primary(dock, fromReview() ? 'Back to review' : 'Continue', function () {
             if (!r.outcome) { sheet('How did the flight go?', h('p', { text: 'Pick one answer to continue.' }), [{ label: 'OK', primary: true }]); return; }
@@ -1343,6 +1797,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         });
         add(view, box);
         if (c.issue) add(view, h('div', { class: 'banner warn', text: 'Document the condition and follow your maintenance procedure before the next flight. Open items carry over as a reminder.' }));
+        add(view, notesBox(r, 'inspection', 'Inspection notes'));
         primary(dock, fromReview() ? 'Back to review' : 'Continue', function () { if (fromReview()) backToReview(); else go('review'); }, { id: 'btn-continue' });
     };
 
@@ -1390,7 +1845,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         add(view, panel('Flight', editBtn('home', 'edit-setup'), h('dl', { class: 'review', id: 'review-flight' },
             h('dt', { text: 'Aircraft' }), h('dd', null, r.aircraft ? aircraftName(r.aircraft) + ' · ' + (r.aircraft.serial || '—') : tag('missing', 'missing')),
             h('dt', { text: 'Pilot' }), h('dd', null, r.pilot || 'You (submitter)'),
-            h('dt', { text: 'Mission' }), h('dd', null, missionText(r) || tag('missing', 'not set')),
+            h('dt', { text: 'Tests' }), h('dd', null, missionText(r) || tag('missing', 'not set')),
             h('dt', { text: 'Site' }), h('dd', null, r.site || '—'),
             r.batteries ? [h('dt', { text: 'Batteries' }), h('dd', { text: r.batteries })] : null,
             r.observer ? [h('dt', { text: 'Spotter' }), h('dd', { text: r.observer })] : null)));
@@ -1403,6 +1858,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             h('dt', { text: 'Position' }), h('dd', null,
                 !loc || loc.source === 'none' ? tag('missing', 'not recorded') : [loc.lat + ', ' + loc.lng,
                     loc.source === 'phone' ? [' ±' + Math.round(loc.acc) + ' m', tag('captured', 'phone GPS')] : tag('', 'entered')]),
+            h('dt', { text: 'Altitude' }), h('dd', null, elevText(loc) || tag('missing', 'not recorded'), loc && loc.source === 'phone' && loc.alt != null ? tag('captured', 'phone GPS') : null),
             h('dt', { text: 'Wind' }), h('dd', null, (w && w.wind) || tag('missing', 'unavailable')),
             h('dt', { text: 'Temp' }), h('dd', null, (w && w.temp) || tag('missing', 'unavailable')),
             h('dt', { text: 'Humidity' }), h('dd', null, (w && w.humidity) || tag('missing', 'unavailable')),
@@ -1410,13 +1866,29 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             h('dt', { text: 'Source' }), h('dd', null, !w ? tag('missing', 'unavailable') : w.source === 'nws' ? ['NWS ' + w.station + (w.observedAt ? ' at ' + fmtTime(new Date(w.observedAt)) : ''), tag('captured', 'observed')] : tag('', 'entered by you')),
             r.observed ? [h('dt', { text: 'Conditions noted' }), h('dd', { text: r.observed })] : null)));
         var pc = counts(r, 'pre', PRE);
-        add(view, panel('Preflight · ' + pc.pass + ' pass, ' + pc.issue + ' issue, ' + pc.na + ' N/A, ' + pc.none + ' unchecked', editBtn('preflight', 'edit-pre'), checklistReview(r, 'pre', PRE, 'review-pre')));
+        add(view, panel('Preflight · ' + pc.pass + ' pass, ' + pc.issue + ' issue, ' + pc.na + ' N/A, ' + pc.none + ' unchecked', editBtn('preflight', 'edit-pre'), checklistReview(r, 'pre', PRE, 'review-pre'),
+            payloadText(r) ? h('div', { class: 'hint', text: 'Payload weight: ' + payloadText(r) }) : null));
+        var rsc = riskScore(r);
+        add(view, panel('Risk assessment', editBtn('risk', 'edit-risk'), h('dl', { class: 'review', id: 'review-risk' },
+            h('dt', { text: 'Result' }), h('dd', null, rsc.band ? [rsc.band + ' · ' + BAND_MEANS[rsc.band], rsc.band === 'Red' ? tag('missing', r.risk.override ? 'override' : 'no-go') : null] : tag('missing', 'not completed')),
+            h('dt', { text: 'Hazards' }), h('dd', null, rsc.hazards.length ? h('ul', { class: 'plain' }, rsc.hazards.map(function (x) {
+                var z = (r.risk.hz[x.it.id] || {});
+                return h('li', { text: '[' + x.it.cat + '] ' + x.it.short + (clean(z.d) ? ' (' + clean(z.d) + ')' : '') + ': ' + (z.l && z.s ? cellText(z.l, z.s) : 'not rated') +
+                    (x.e.mitig ? ' → ' + (z.l2 && z.s2 ? cellText(z.l2, z.s2) : 'not rated') + (clean(z.m) ? ' with: ' + clean(z.m) : '') : '') });
+            })) : (rsc.answered ? 'None identified' : '—')),
+            r.risk.override ? [h('dt', { text: 'Override' }), h('dd', { text: clean(r.risk.override.reason) })] : null)));
+        if (selectedTests(r).length) add(view, panel('Test results', editBtn('outcome', 'edit-results'),
+            h('ul', { class: 'ck-list', id: 'review-results' }, resultsText(r).split(' | ').map(function (line) { return h('li', { text: line }); }))));
         add(view, panel('Postflight', editBtn('outcome', 'edit-outcome'), h('dl', { class: 'review', id: 'review-outcome' },
             h('dt', { text: 'Outcome' }), h('dd', null, outcomeText(r) || tag('missing', 'missing')),
             h('dt', { text: 'Issues' }), h('dd', { text: issueText(r) }),
             r.incident.what || r.incident.harm ? [h('dt', { text: 'Incident' }), h('dd', { text: valuesForForm(r).incident })] : null,
-            h('dt', { text: 'Max alt' }), h('dd', null, r.altitude ? [r.altitude + ' m AGL', tag('estimated', 'estimate')] : '—'))));
+            h('dt', { text: 'Max alt' }), h('dd', null, altText(r) ? [altText(r) + ' above takeoff', tag('', 'entered')] : '\u2014'),
+            h('dt', { text: 'Battery' }), h('dd', null, battText(r) || '\u2014'))));
         add(view, panel('Inspection', editBtn('inspect', 'edit-inspect'), checklistReview(r, 'post', POST, 'review-post')));
+        var sectionNotes = NOTE_SECTIONS.filter(function (x) { return clean(r.notesBy[x[0]]); });
+        if (sectionNotes.length) add(view, panel('Notes from each step', null, h('dl', { class: 'review', id: 'review-notes' },
+            sectionNotes.map(function (x) { return [h('dt', { text: x[1] }), h('dd', { text: clean(r.notesBy[x[0]]) })]; }))));
         add(view, panel('Flight notes', null, h('textarea', { id: 'f-notes', 'aria-label': 'Flight notes', maxlength: 1000, rows: 4, value: r.notes,
             placeholder: 'Procedures and maneuvers flown, mission results, unusual behavior, environmental conditions, or lessons learned.',
             oninput: function () { r.notes = this.value; touch(r); } })));
@@ -1616,7 +2088,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var url = h('textarea', { id: 's-url', class: 'mono', rows: 4, autocomplete: 'off', spellcheck: 'false', autocapitalize: 'off', placeholder: 'https://forms.office.com/Pages/ResponsePage.aspx?id=…', value: settings.url || '' });
         var msg = h('div', { class: 'hint', id: 's-url-msg' });
         var toks = h('div', { class: 'tokens', id: 's-tokens' });
-        var models = h('input', { id: 's-models', autocomplete: 'off', placeholder: 'M1', value: (settings.models || []).join(', ') });
+        var models = h('input', { id: 's-models', autocomplete: 'off', placeholder: 'e.g. Model A, Model B', value: (settings.models || []).join(', ') });
         url.addEventListener('input', function () { checkSetupUrl(url.value, msg, toks); });
         var saveLink = function () {
             var p = checkSetupUrl(url.value, msg, toks);
@@ -1627,7 +2099,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             }
             var ms = parseModels(models.value);
             settings.url = p.url; // keep signedInAt: the Microsoft session doesn't depend on which form
-            settings.models = ms.length ? ms : ['M1'];
+            settings.models = ms;
             store.set(K.settings, settings);
             return true;
         };
@@ -1657,7 +2129,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
                 sheet('Clear everything on this phone?', h('p', { text: 'Removes the form link, aircraft list, preferences' + (n ? ' and ' + n + ' unsubmitted flight' + (n > 1 ? 's, which will be lost' : ', which will be lost') : '') + '.' }),
                     [{ label: 'Cancel', primary: true }, { label: 'Clear everything', danger: true, fn: function () {
                         [K.settings, K.prefs, K.flights, K.current, K.carry].forEach(store.del);
-                        settings = { url: '', models: ['M1'] }; prefs = { aircraft: [], selected: null, mission: '', site: '', observer: '', pilot: '' };
+                        settings = { url: '', models: [] }; prefs = { aircraft: [], selected: null, mission: '', site: '', observer: '', pilot: '' };
                         flights = {}; carry = {}; currentId = null;
                         render();
                     } }]);
@@ -1675,10 +2147,10 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             var s = JSON.parse(b64urlDecode(m[1]));
             var p = parseFormUrl(s.url || '');
             if (p.error) { alert('Setup link rejected: ' + p.error); return; }
-            var models = Array.isArray(s.models) ? parseModels(s.models.join(',')) : ['M1'];
+            var models = Array.isArray(s.models) ? parseModels(s.models.join(',')) : [];
             if (!confirm('Connect this phone to the form at ' + new URL(p.url).hostname + '?\nModels: ' + models.join(', '))) return;
             settings.url = p.url;
-            settings.models = models.length ? models : ['M1'];
+            settings.models = models;
             store.set(K.settings, settings);
         } catch (e) { alert('That setup link is damaged.'); }
     }
@@ -1696,7 +2168,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     migrateOldDraft();
     if (currentId && !flights[currentId]) currentId = null;
     if (settings.signInReturn) { delete settings.signInReturn; store.set(K.settings, settings); } // from an older build
-    Object.keys(flights).forEach(function (k) { if (flights[k].step === 'flightsetup') flights[k].step = 'home'; });
+    Object.keys(flights).forEach(function (k) { upgradeRecord(flights[k]); if (flights[k].step === 'flightsetup') flights[k].step = 'home'; });
     var inHandoff = Object.keys(flights).map(function (k) { return flights[k]; }).filter(function (r) { return r.status === 'handoff' || r.awaitingSignIn; })
         .sort(function (a, b) { return a.handoffAt < b.handoffAt ? 1 : -1; })[0];
     if (inHandoff) {
