@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Au0TYEfVqsZLgODB5csFDUtlV028dWDnUAx7XgR/TG8='; style-src 'sha256-My4/Q/p5J2XD6/u+UW2z9TI6dw0btEbceudqMLuhg5o='; font-src data:; img-src data:; connect-src https://api.weather.gov; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-OWqPtsxEFNQf2t37nPvQNrW4qHC/wdDJB3yTrndWMrI='; style-src 'sha256-fEmpMWq113Sysc3E+HDv/Ff7OmkDwBR8XyjfnH6+45c='; font-src data:; img-src data:; connect-src https://api.weather.gov; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -143,24 +143,16 @@ details.hint summary { min-height: 40px; display: flex; align-items: center; }
 .opt.bad[aria-pressed="true"], .opt.bad[aria-checked="true"] { border-color: var(--bad); background: var(--bad-bg); }
 .opt.bad[aria-pressed="true"] .dot, .opt.bad[aria-checked="true"] .dot { background: var(--bad); border-color: var(--bad); }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.hazard { border-left: 3px solid var(--warn); padding: 4px 0 8px 12px; margin: 8px 0 14px; }
-.sub-q { font-size: 13px; font-weight: 600; margin: 12px 0 6px; }
-.sub-q.strong { font-size: 15px; margin-top: 16px; }
-.risk-cell { margin: 10px 0 4px; }
-.panel .chips + .big-q { margin-top: 20px; }
-.risk-cell .tag { margin-left: 0; font-size: 13px; padding: 3px 8px; white-space: normal; }
-.tag.band-ok { background: #1f9d55; color: #fff; }
-.tag.band-warn { background: #f5c518; color: #1c1c1c; }
-.tag.band-bad { background: #d32f2f; color: #fff; }
-details.how ol { padding-left: 18px; margin: 4px 0 10px; }
-table.matrix { border-collapse: collapse; width: 100%; font-size: 11px; margin-bottom: 8px; }
-table.matrix th, table.matrix td { border: 1px solid var(--line); padding: 4px 2px; text-align: center; font-weight: 600; }
-table.matrix th { font-weight: 500; }
-table.matrix td.mx-ok { background: #1f9d55; color: #fff; }
-table.matrix td.mx-warn { background: #f5c518; color: #1c1c1c; }
-table.matrix td.mx-bad { background: #d32f2f; color: #fff; }
-table.matrix td.used { outline: 3px solid var(--ink); outline-offset: -3px; }
-ul.plain { margin: 0; padding-left: 16px; }
+.panel .chips + .big-q, .panel .anchors + .big-q { margin-top: 20px; }
+.scale-wrap .chips { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+.scale-wrap .chips .opt { padding: 0; justify-content: center; font-size: 15px; min-width: 0; }
+.anchors { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13px; color: var(--muted); }
+.anchors li { padding: 3px 0 3px 8px; border-left: 3px solid var(--line); margin-bottom: 2px; }
+.anchors li.a-ok { border-left-color: #1f9d55; }
+.anchors li.a-warn { border-left-color: #e0a800; }
+.anchors li.a-bad { border-left-color: #d32f2f; }
+.anchors li.on { color: var(--ink); font-weight: 600; }
+.anchors b { font-family: 'Plex Mono', ui-monospace, monospace; font-weight: 600; margin-right: 4px; }
 .chips .opt { width: auto; min-height: 44px; padding: 8px 14px; font-size: 15px; }
 .chips .opt .dot { display: none; }
 .follow { margin: -2px 0 6px 0; }
@@ -276,7 +268,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     // =====================================================================
     // Config
     // =====================================================================
-    var BUILD = 'ec4f7b1';
+    var BUILD = '99dae08';
     // Hosts a pre-filled link may point at. Prevents a tampered setup link from sending entries elsewhere.
     var FORM_HOSTS = ['forms.office.com', 'forms.office365.us', 'forms.osi.office365.us', 'forms.microsoft.com', 'forms.cloud.microsoft'];
     // Form codes. req = the form must have it; rec = recommended (Setup and Review warn when missing).
@@ -371,67 +363,21 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         { id: 'arm', short: 'Arm/disarm/failsafe', label: 'Arm / disarm & failsafe test', crit: true,
             help: 'Motors arm and disarm on command; the emergency motor stop works; with the radio link lost, the aircraft takes its failsafe action (return home or land). Confirm the action in your settings.' }
     ];
-    // Risk assessment after preflight. Hazards are identified with the FAA PAVE checklist (Pilot, Aircraft, enVironment,
-    // External pressures; FAA PAVE handout and AC 107-2 A.5.4.2, IMSAFE for the pilot). Each hazard is rated with the
-    // AC 107-2 Appendix A criteria (Table A-1) and placed on its safety risk matrix (Table A-2): Red is unacceptable,
-    // Yellow is acceptable with mitigation, Green is acceptable. Mitigations follow Figure A-1.
+    // Risk assessment after preflight: four anchored 1-10 scores (1 = lowest risk) and an influence check.
+    // The worst score sets the band: 1-3 Green (go), 4-6 Yellow (go with a mitigation), 7-10 Red (no-go unless overridden).
+    // Being under the influence is a hard stop: 14 CFR 107.27 applies 91.17 (no alcohol within 8 hours, no impairing drugs).
     var RISK = [
-        { id: 'P', name: 'Pilot', help: 'Am I healthy for flight, and within my personal minimums for this sUAS? (IMSAFE)', items: [
-            { id: 'illness', short: 'Illness', q: 'Illness: am I free of any illness or symptom of an illness that might affect me in flight?' },
-            { id: 'medication', short: 'Medication', q: 'Medication: am I free of any drug (prescription or over-the-counter) that might affect me?' },
-            { id: 'stress', short: 'Stress', q: 'Stress: am I free of psychological or emotional factors that might affect my performance?' },
-            { id: 'alcohol', short: 'Alcohol', q: 'Alcohol: no alcohol within the last 8 to 24 hours?' },
-            { id: 'fatigue', short: 'Fatigue', q: 'Fatigue: have I had sufficient sleep and rest recently?' },
-            { id: 'eating', short: 'Eating', q: 'Eating: am I sufficiently nourished (and hydrated)?' },
-            { id: 'current', short: 'Familiar & current', q: 'Am I familiar with and current in this aircraft and this test, within my personal minimums?' }
-        ] },
-        { id: 'A', name: 'Aircraft', help: 'What limitations will the aircraft impose on this flight?', items: [
-            { id: 'condition', short: 'Aircraft condition', q: 'Preflight done: aircraft, control station and takeoff/landing equipment in condition for safe operation?' },
-            { id: 'secured', short: 'Payload secured', q: 'Payload and equipment properly secured to the aircraft?' },
-            { id: 'equipped', short: 'Right aircraft', q: 'Is this the right aircraft for the flight, and is it equipped for it?' },
-            { id: 'load', short: 'Load & altitude', q: 'Can it carry the planned load and operate at the altitudes needed?' },
-            { id: 'reserve', short: 'Battery reserve', q: 'Enough battery for the planned flight, with reserves?' }
-        ] },
-        { id: 'V', name: 'Environment', help: 'Weather, site, airspace and light. Have I left myself an “out”?', items: [
-            { id: 'weather', short: 'Weather', q: 'Weather: am I comfortable and experienced enough to fly in these conditions (wind, gusts, rain, temperature)?' },
-            { id: 'out', short: 'Emergency landing spots', q: 'Have I left myself an “out”, with alternative landing spots in case of an emergency?' },
-            { id: 'airspace', short: 'Airspace & TFRs', q: 'Airspace and TFRs checked for the area of operation?' },
-            { id: 'obstacles', short: 'Obstacles & people', q: 'Terrain, obstacles (towers, wires, trees) and people known and avoidable?' },
-            { id: 'light', short: 'Light & visibility', q: 'Light and visibility good enough to keep the aircraft in sight?' }
-        ] },
-        { id: 'E', name: 'External pressures', help: 'External pressure is the one risk factor that can cause a pilot to ignore all the others.', items: [
-            { id: 'hurry', short: 'Pressure to hurry', q: 'Free of pressure to complete the flight operation quickly?' },
-            { id: 'anxious', short: 'Flight-induced stress', q: 'Will this flight leave me calm, not stressed or anxious?' },
-            { id: 'culture', short: 'Safety culture', q: 'Free of an unhealthy safety culture (pushed to skip steps or accept shortcuts)?' },
-            { id: 'honest', short: 'Honest about limits', q: 'Am I being honest with myself and others about my abilities and limitations?' },
-            { id: 'impress', short: 'Desire to impress', q: 'Free of the desire to impress or demonstrate (“Watch this!”)?' }
-        ] }
+        { id: 'experience', short: 'Experience', q: 'Pilot experience with this aircraft and this test',
+          anchors: ['Many flights on this aircraft and this kind of test', 'Some flights on this aircraft, or new to this kind of test', 'First flight on this aircraft, or a first-of-its-kind test'] },
+        { id: 'rest', short: 'Rest', q: 'How rested are you?',
+          anchors: ['7+ hours of sleep, alert', '5–7 hours of sleep, or a bit tired', 'Under 5 hours of sleep, or struggling to focus'] },
+        { id: 'weather', short: 'Weather', q: 'Weather and wind',
+          anchors: ['Well within the aircraft’s limits, good visibility', 'Near limits, gusty, or reduced visibility', 'At or beyond limits, rain, or poor visibility'] },
+        { id: 'plan', short: 'Flight plan', q: 'Flight plan',
+          anchors: ['Test briefed with the crew, emergency landing spot chosen, return-to-home set', 'Partly briefed, or the plan changed on site', 'No clear plan, or no emergency landing spot'] }
     ];
-    // AC 107-2 Table A-1, Sample Severity and Likelihood Criteria (verbatim).
-    var SEVERITY = [
-        { v: 'A', name: 'Catastrophic', def: 'Equipment destroyed, multiple deaths.' },
-        { v: 'B', name: 'Hazardous', def: 'Large reduction in safety margins, physical distress, or a workload such that crewmembers cannot be relied upon to perform their tasks accurately or completely. Serious injury or death. Major equipment damage.' },
-        { v: 'C', name: 'Major', def: 'Significant reduction in safety margins, reduction in the ability of crewmembers to cope with adverse operating conditions as a result of an increase in workload, or as result of conditions impairing their efficiency. Serious incident. Injury to persons.' },
-        { v: 'D', name: 'Minor', def: 'Nuisance. Operating limitations. Use of emergency procedures. Minor incident.' },
-        { v: 'E', name: 'Negligible', def: 'Little consequence.' }
-    ];
-    var LIKELIHOOD = [
-        { v: 5, name: 'Frequent', def: 'Likely to occur many times.' },
-        { v: 4, name: 'Occasional', def: 'Likely to occur sometimes.' },
-        { v: 3, name: 'Remote', def: 'Unlikely, but possible to occur.' },
-        { v: 2, name: 'Improbable', def: 'Very unlikely to occur.' },
-        { v: 1, name: 'Extremely improbable', def: 'Almost inconceivable that the event will occur.' }
-    ];
-    // AC 107-2 Table A-2, Safety Risk Matrix (colors as published).
-    var MATRIX_RED = ['5A', '5B', '5C', '4A', '4B', '3A'];
-    var MATRIX_GREEN = ['3E', '2D', '2E', '1A', '1B', '1C', '1D', '1E'];
-    function matrixBand(l, s) {
-        if (!l || !s) return '';
-        var c = l + s;
-        return MATRIX_RED.indexOf(c) !== -1 ? 'Red' : MATRIX_GREEN.indexOf(c) !== -1 ? 'Green' : 'Yellow';
-    }
-    var RISK_ITEMS = [];
-    RISK.forEach(function (cat) { cat.items.forEach(function (it) { it.cat = cat.id; RISK_ITEMS.push(it); }); });
+    var RISK_BANDS = [{ band: 'Green', lo: 1, hi: 3 }, { band: 'Yellow', lo: 4, hi: 6 }, { band: 'Red', lo: 7, hi: 10 }];
+    function scoreBand(n) { return !n ? '' : n <= 3 ? 'Green' : n <= 6 ? 'Yellow' : 'Red'; }
     var POST = [
         { id: 'battery', short: 'Battery', label: 'Battery disconnected / inspected', link: ['battery'] },
         { id: 'props', short: 'Props/frame', label: 'Propellers / frame / landing gear inspected', help: 'Chips, cracks or loose props; cracked arms or shell; landing gear and any signs of a hard landing.', link: ['props', 'hard'] },
@@ -655,7 +601,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
     function upgradeRecord(r) {
         if (!r.missions) r.missions = r.mission ? [r.mission] : [];
         delete r.mission;
-        if (!r.risk || r.risk.v !== 2) r.risk = newRisk(); // the earlier 8-question score is not carried over
+        if (!r.risk || r.risk.v !== 3) r.risk = newRisk(); // earlier risk formats are not carried over
         if (!r.tests) r.tests = {};
         if (!r.payload) r.payload = { value: '', unit: prefs.payloadUnit || 'g' };
         if (!r.batt) r.batt = { start: '', end: '' };
@@ -809,6 +755,7 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         var rs = riskScore(r);
         if (!rs.band && !(r.preAck && r.preAck.migrated)) f.warn.push({ text: 'Risk assessment not completed.', step: 'risk' });
         if (rs.band === 'Red' && r.risk.override) f.warn.push({ text: 'Flown with a Red risk assessment (override: ' + clean(r.risk.override.reason) + ').', step: 'risk' });
+        if (rs.impaired) f.block.push({ text: 'Risk assessment says the pilot is under the influence: this flight can\u2019t be logged as flown.', step: 'risk' });
         var noResults = selectedTests(r).filter(function (t) { return t.fields.length && !Object.keys(r.tests[t.id] || {}).some(function (k) { return k.slice(-4) !== 'Unit' && r.tests[t.id][k] !== ''; }); });
         if (noResults.length) f.warn.push({ text: 'No results entered for: ' + noResults.map(function (t) { return t.name; }).join(', ') + '.', step: 'outcome' });
         var c = counts(r, 'pre', PRE);
@@ -1090,45 +1037,29 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         if (a !== '' && b !== '') return a + '% \u2192 ' + b + '% (' + (Number(a) - Number(b)) + '% used)';
         return a !== '' ? 'Start ' + a + '%' : 'Landed at ' + b + '%';
     }
-    function newRisk() { return { v: 2, a: {}, hz: {}, override: null }; }
-    function hazard(r, id) { return r.risk.hz[id] || (r.risk.hz[id] = { d: '', s: '', l: 0, m: '', s2: '', l2: 0, ok: false }); }
-    // One identified hazard: its matrix cell before and after mitigation, and what is still missing.
-    function hazardEval(z) {
-        var b1 = matrixBand(z.l, z.s), mitig = b1 === 'Yellow' || b1 === 'Red';
-        var b2 = mitig ? matrixBand(z.l2, z.s2) : '';
-        var done = !!b1 && (!mitig || (!!clean(z.m) && !!b2 && z.ok));
-        return { b1: b1, b2: b2, mitig: mitig, final: mitig ? b2 : b1, done: done };
-    }
-    var BAND_RANK = { Green: 1, Yellow: 2, Red: 3 };
-    // Overall result is the highest risk left after mitigation (no hazards identified: Green).
+    function newRisk() { return { v: 3, s: {}, influence: '', m: '', override: null }; }
+    // Overall band is the worst single score. Impaired is its own result: a hard stop.
     function riskScore(r) {
-        var risk = r.risk || newRisk(), answered = 0, open = 0, worst = '', hazards = [];
-        RISK_ITEMS.forEach(function (it) {
-            var a = risk.a[it.id];
-            if (!a) return;
-            answered++;
-            if (a !== 'haz') return;
-            var e = hazardEval(risk.hz[it.id] || {});
-            hazards.push({ it: it, e: e });
-            if (!e.done) open++;
-            if (e.final && (!worst || BAND_RANK[e.final] > BAND_RANK[worst])) worst = e.final;
-        });
-        var complete = answered === RISK_ITEMS.length && !open;
-        return { band: complete ? (worst || 'Green') : '', answered: answered, total: RISK_ITEMS.length, open: open, hazards: hazards };
+        var risk = r.risk || newRisk(), answered = 0, worst = 0, high = [];
+        RISK.forEach(function (q) { var n = risk.s[q.id]; if (n) { answered++; if (n > worst) worst = n; } });
+        if (risk.influence) answered++;
+        RISK.forEach(function (q) { var n = risk.s[q.id]; if (n && worst > 3 && scoreBand(n) === scoreBand(worst)) high.push(q); });
+        var total = RISK.length + 1, impaired = risk.influence === 'impaired';
+        var band = impaired ? 'Impaired' : answered === total ? scoreBand(worst) : '';
+        return { band: band, answered: answered, total: total, worst: worst, high: high, impaired: impaired };
     }
-    function cellText(l, s) { return l + s + ' ' + matrixBand(l, s); }
+    function scoresText(r) {
+        return RISK.map(function (q) { return q.short + ' ' + (r.risk.s[q.id] || '—'); }).join(', ');
+    }
     function riskText(r) {
         var sc = riskScore(r);
         if (!sc.band) return sc.answered ? 'Incomplete' : '';
+        if (sc.impaired) return 'No-go · Pilot reported being under the influence';
         var t = sc.band;
         if (sc.band === 'Red' && r.risk.override) t += ' – proceeded with override: ' + clean(r.risk.override.reason);
-        if (!sc.hazards.length) return t + ' · PAVE: no hazards identified';
-        return t + ' · Hazards: ' + sc.hazards.map(function (x) {
-            var z = (r.risk.hz[x.it.id] || {}), d = clean(z.d);
-            var line = '[' + x.it.cat + '] ' + x.it.short + (d ? ' (' + d + ')' : '') + ': ' + cellText(z.l, z.s);
-            if (x.e.mitig) line += ', mitigated: ' + clean(z.m) + ' → ' + cellText(z.l2, z.s2);
-            return line;
-        }).join('; ');
+        t += ' · ' + scoresText(r) + ' (1 low risk, 10 high) · Not under the influence';
+        if (sc.band !== 'Green' && clean(r.risk.m)) t += ' · Mitigation: ' + clean(r.risk.m);
+        return t;
     }
     function testVal(r, t, f) { var v = r.tests[t.id] && r.tests[t.id][f.k]; return v == null ? '' : v; }
     function resultsText(r) {
@@ -1508,95 +1439,44 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         }, { id: 'btn-continue', big: !fromReview() });
     };
 
-    // ---------- Screen 3: Risk assessment (PAVE hazards on the AC 107-2 risk matrix) ----------
-    var BAND_CLS = { Green: 'ok', Yellow: 'warn', Red: 'bad' };
-    var BAND_MEANS = { Green: 'Acceptable', Yellow: 'Acceptable with mitigation', Red: 'Unacceptable' };
-    function bandTag(l, s, id) {
-        var b = matrixBand(l, s);
-        return b ? h('span', { class: 'tag band-' + BAND_CLS[b], id: id, text: l + s + ' · ' + b + ' · ' + BAND_MEANS[b] }) : null;
-    }
-    function matrixTable(sc, r) {
-        var used = {};
-        sc.hazards.forEach(function (x) { var z = (r.risk.hz[x.it.id] || {}); if (z.l && z.s) used[z.l + z.s] = 1; if (z.l2 && z.s2) used[z.l2 + z.s2] = 1; });
-        return h('table', { class: 'matrix', id: 'risk-matrix' },
-            h('tr', null, h('th', { text: 'Likelihood \\ Severity' }), SEVERITY.map(function (s) { return h('th', { text: s.v + ' ' + s.name }); })),
-            LIKELIHOOD.map(function (l) {
-                return h('tr', null, h('th', { text: l.v + ' ' + l.name }), SEVERITY.map(function (s) {
-                    var c = l.v + s.v;
-                    return h('td', { class: 'mx-' + BAND_CLS[matrixBand(l.v, s.v)] + (used[c] ? ' used' : ''), text: c });
-                }));
-            }));
-    }
-    function sevLikPicker(prefix, z, sk, lk, onSet) {
-        var sel = SEVERITY.filter(function (x) { return x.v === z[sk]; })[0], lsel = LIKELIHOOD.filter(function (x) { return x.v === z[lk]; })[0];
-        return [
-            h('div', { class: 'sub-q', text: 'Severity, if it happens' }),
-            chipChoice(prefix + '-' + sk, SEVERITY.map(function (x) { return { v: x.v, l: x.v + ' ' + x.name }; }), z[sk], function (v) { z[sk] = v; onSet(); }, 'Severity'),
-            sel ? h('div', { class: 'hint', text: sel.name + ': ' + sel.def }) : null,
-            h('div', { class: 'sub-q', text: 'Likelihood' }),
-            chipChoice(prefix + '-' + lk, LIKELIHOOD.map(function (x) { return { v: x.v, l: x.v + ' ' + x.name }; }), z[lk], function (v) { z[lk] = v; onSet(); }, 'Likelihood'),
-            lsel ? h('div', { class: 'hint', text: lsel.name + ': ' + lsel.def }) : null
-        ];
-    }
+    // ---------- Screen 3: Risk assessment (anchored 1-10 scores, influence check) ----------
+    var BAND_CLS = { Green: 'ok', Yellow: 'warn', Red: 'bad', Impaired: 'bad' };
+    var BAND_MEANS = { Green: 'Go', Yellow: 'Go with a mitigation', Red: 'No-go', Impaired: 'No-go' };
     VIEWS.risk = function (top, view, dock) {
         var r = cur();
         if (!r) { go('home'); return; }
         header(top, 'Risk assessment', fromReview() ? backToReview : function () { go('preflight'); }, 'risk');
         var redraw = function () { touch(r); render(); };
-        var sc = riskScore(r);
-        var left = sc.total - sc.answered;
+        var sc = riskScore(r), left = sc.total - sc.answered;
         add(view, h('div', { class: 'banner ' + (BAND_CLS[sc.band] || 'warn'), id: 'risk-band' },
-            h('strong', { text: sc.band ? sc.band + ' · ' + BAND_MEANS[sc.band] + (sc.hazards.length ? ' (' + sc.hazards.length + ' hazard' + (sc.hazards.length > 1 ? 's' : '') + ')' : ' (no hazards)')
-                : left ? left + ' of ' + sc.total + ' questions left' : sc.open + ' hazard' + (sc.open > 1 ? 's' : '') + ' still to rate' }),
-            h('div', { text: sc.band === 'Green' ? 'Go.' : sc.band === 'Yellow' ? 'Go, using the mitigations you recorded.'
-                : sc.band === 'Red' ? 'No-go. Change the plan to bring every hazard out of Red, or record why you’re proceeding.'
-                : 'Answer each PAVE question. Any “No” is a hazard: rate it on the FAA risk matrix.' })));
-        add(view, h('details', { class: 'hint how' }, h('summary', { text: 'How this works (FAA AC 107-2, Appendix A)' }),
-            h('ol', null,
-                h('li', { text: 'Identify hazards with the PAVE checklist: Pilot (IMSAFE), Aircraft, enVironment, External pressures.' }),
-                h('li', { text: 'For each hazard, pick its severity and likelihood (Table A-1). The matrix (Table A-2) gives its risk.' }),
-                h('li', { text: 'Yellow or Red: develop a mitigation, rate the risk again with it in place, and check it creates no new hazards (Figure A-1).' }),
-                h('li', { text: 'The result is the highest risk left. Green: acceptable. Yellow: acceptable with mitigation. Red: unacceptable.' })),
-            matrixTable(sc, r)));
-        var pc = counts(r, 'pre', PRE);
-        RISK.forEach(function (cat) {
-            var p = panel(cat.id + ' · ' + cat.name, h('button', { class: 'link-btn', type: 'button', id: 'risk-all-' + cat.id, onclick: function () {
-                cat.items.forEach(function (it) { if (!r.risk.a[it.id]) r.risk.a[it.id] = 'ok'; });
-                redraw();
-            } }, 'All yes'));
-            p.id = 'risk-cat-' + cat.id;
-            add(p, h('div', { class: 'hint', text: cat.help }));
-            cat.items.forEach(function (it) {
-                add(p, h('p', { class: 'big-q', id: 'rq-' + it.id, text: it.q }));
-                if (it.id === 'condition' && pc.issue) add(p, h('div', { class: 'hint ' + (pc.critIssue.length ? 'bad' : 'warn'),
-                    text: 'The preflight checklist has ' + pc.issue + ' issue' + (pc.issue > 1 ? 's' : '') + (pc.critIssue.length ? ', ' + pc.critIssue.length + ' critical' : '') + '.' }));
-                add(p, chipChoice('risk-' + it.id, [{ v: 'ok', l: 'Yes' }, { v: 'haz', l: 'No · hazard' }], r.risk.a[it.id], function (v) {
-                    r.risk.a[it.id] = v; redraw();
-                }, it.short, function (j) { return j ? 'warn' : ''; }));
-                if (r.risk.a[it.id] !== 'haz') return;
-                var z = hazard(r, it.id), e = hazardEval(z), pre = 'hz-' + it.id;
-                var box = h('div', { class: 'hazard', id: pre });
-                add(box, field('What’s the hazard? (optional)', h('input', { id: pre + '-d', maxlength: 120, value: z.d, placeholder: 'e.g. gusts to 20 kt', oninput: function () { z.d = this.value; touch(r); } })));
-                add(box, sevLikPicker(pre, z, 's', 'l', redraw));
-                add(box, h('div', { class: 'risk-cell' }, bandTag(z.l, z.s, pre + '-band')));
-                if (e.mitig) {
-                    add(box, field('Mitigation: how will you reduce this risk?', h('textarea', { id: pre + '-m', maxlength: 300, rows: 2, value: z.m,
-                        placeholder: 'e.g. wait for gusts to drop, add a visual observer, move away from people', oninput: function () { z.m = this.value; touch(r); } }), true));
-                    add(box, h('div', { class: 'sub-q strong', text: 'Risk with the mitigation in place' }));
-                    add(box, sevLikPicker(pre, z, 's2', 'l2', redraw));
-                    add(box, h('div', { class: 'risk-cell' }, bandTag(z.l2, z.s2, pre + '-band2')));
-                    add(box, h('button', { class: 'opt multi', type: 'button', id: pre + '-ok', 'aria-pressed': String(!!z.ok), onclick: function () { z.ok = !z.ok; redraw(); } },
-                        h('span', { class: 'dot' }), 'I checked that the mitigation doesn’t create new hazards'));
-                }
-                add(p, box);
-            });
-            add(view, p);
+            h('strong', { text: sc.impaired ? 'No-go · under the influence' : sc.band ? sc.band + ' · ' + BAND_MEANS[sc.band] + ' (highest score ' + sc.worst + ')' : left + ' of ' + sc.total + ' questions left' }),
+            h('div', { text: sc.impaired ? 'Flying under the influence of alcohol or drugs is prohibited (14 CFR 107.27 and 91.17). The flight can’t start.'
+                : sc.band === 'Green' ? 'All scores 1–3.'
+                : sc.band === 'Yellow' ? 'A score of 4–6: write how you’ll reduce the risk.'
+                : sc.band === 'Red' ? 'A score of 7 or more: change the plan and rescore, or record why you’re proceeding.'
+                : 'Score each item 1–10 (1 = lowest risk). The highest score sets the result: 1–3 Green, 4–6 Yellow, 7–10 Red.' })));
+        var qs = h('section', { class: 'panel' });
+        add(qs, h('p', { class: 'big-q', id: 'rq-influence', text: 'Free of alcohol (none in the last 8 hours), drugs and medication that could impair you?' }));
+        add(qs, chipChoice('risk-influence', [{ v: 'clear', l: 'Yes' }, { v: 'impaired', l: 'No' }], r.risk.influence, function (v) { r.risk.influence = v; redraw(); },
+            'Influence', function (j) { return j ? 'bad' : ''; }));
+        RISK.forEach(function (q) {
+            var n = r.risk.s[q.id];
+            add(qs, h('p', { class: 'big-q', id: 'rq-' + q.id, text: q.q }));
+            add(qs, h('div', { class: 'scale-wrap' }, chipChoice('risk-' + q.id, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], n, function (v) { r.risk.s[q.id] = v; redraw(); },
+                q.short + ', 1 lowest risk to 10 highest', function (j) { return ['ok', 'warn', 'bad'][j < 3 ? 0 : j < 6 ? 1 : 2]; })));
+            add(qs, h('ul', { class: 'anchors' }, RISK_BANDS.map(function (b, i) {
+                return h('li', { class: 'a-' + BAND_CLS[b.band] + (scoreBand(n) === b.band ? ' on' : '') }, h('b', { text: b.lo + '–' + b.hi }), ' ' + q.anchors[i]);
+            })));
         });
+        add(view, qs);
+        if (sc.band === 'Yellow' || sc.band === 'Red') add(view, panel('Mitigation', null,
+            field('How will you reduce the risk? (' + sc.high.map(function (q) { return q.short; }).join(', ') + ')', h('textarea', { id: 'risk-mitigation', maxlength: 300, rows: 3, value: r.risk.m,
+                placeholder: 'e.g. wait for gusts to drop, add a visual observer, shorten the test', oninput: function () { r.risk.m = this.value; touch(r); } }), true)));
         if (r.risk.override) add(view, h('div', { class: 'banner bad', id: 'risk-override' }, 'Override recorded: ' + clean(r.risk.override.reason)));
         add(view, notesBox(r, 'risk', 'Risk notes'));
         var askOverride = function (msg) {
             var ta = h('textarea', { id: 'risk-override-reason', maxlength: 300, rows: 3, placeholder: 'Why it’s acceptable to fly, and who agreed' });
-            sheet('Red risk: no-go', [h('p', { text: 'At least one hazard is still Red after mitigation. On the FAA matrix that’s unacceptable. Change the plan and rate it again, or record why you’re proceeding. The override is logged and shown on the dashboard.' }),
+            sheet('Red risk: no-go', [h('p', { text: 'A score of 7 or more is Red. Change the plan and rescore, or record why you’re proceeding. The override is logged and shown on the dashboard.' }),
                 msg ? h('p', { class: 'hint bad', text: msg }) : null, field('Reason for proceeding', ta, true)],
                 [{ label: 'Go back and change', primary: true },
                  { label: 'Proceed with override', danger: true, fn: function () {
@@ -1607,14 +1487,20 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
         };
         primary(dock, fromReview() ? 'Back to review' : 'Start Flight Timer', function () {
             var cur2 = riskScore(r);
+            if (cur2.impaired) {
+                sheet('No-go: under the influence', h('p', { text: 'Flying under the influence of alcohol or drugs is prohibited (14 CFR 107.27 and 91.17). This can’t be overridden. Another qualified pilot can fly, or postpone the flight.' }),
+                    [{ label: 'OK', primary: true }]);
+                return;
+            }
             if (!cur2.band) {
-                var firstQ = RISK_ITEMS.filter(function (it) { return !r.risk.a[it.id]; })[0];
-                var firstHz = cur2.hazards.filter(function (x) { return !x.e.done; })[0];
-                var msg = firstQ ? 'Answer every PAVE question (' + (cur2.total - cur2.answered) + ' left).'
-                    : 'Finish rating “' + firstHz.it.short + '”: severity and likelihood' + (firstHz.e.mitig ? ', a mitigation, the risk with it in place, and the new-hazards check.' : '.');
-                sheet('Finish the risk assessment', h('p', { text: msg }), [{ label: 'OK', primary: true, fn: function () {
-                    var el = $(firstQ ? 'rq-' + firstQ.id : 'hz-' + firstHz.it.id); if (el) el.scrollIntoView({ block: 'center' });
-                } }]);
+                var first = !r.risk.influence ? 'influence' : RISK.filter(function (q) { return !r.risk.s[q.id]; })[0].id;
+                sheet('Finish the risk assessment', h('p', { text: 'Answer all ' + cur2.total + ' questions (' + (cur2.total - cur2.answered) + ' left).' }),
+                    [{ label: 'OK', primary: true, fn: function () { var el = $('rq-' + first); if (el) el.scrollIntoView({ block: 'center' }); } }]);
+                return;
+            }
+            if (cur2.band !== 'Green' && !clean(r.risk.m)) {
+                sheet('Add a mitigation', h('p', { text: 'With a ' + cur2.band + ' result, write how you’ll reduce the risk.' }),
+                    [{ label: 'OK', primary: true, fn: function () { var t = $('risk-mitigation'); if (t) t.focus(); } }]);
                 return;
             }
             if (cur2.band !== 'Red') r.risk.override = null;
@@ -1870,12 +1756,10 @@ code { font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px; backg
             payloadText(r) ? h('div', { class: 'hint', text: 'Payload weight: ' + payloadText(r) }) : null));
         var rsc = riskScore(r);
         add(view, panel('Risk assessment', editBtn('risk', 'edit-risk'), h('dl', { class: 'review', id: 'review-risk' },
-            h('dt', { text: 'Result' }), h('dd', null, rsc.band ? [rsc.band + ' · ' + BAND_MEANS[rsc.band], rsc.band === 'Red' ? tag('missing', r.risk.override ? 'override' : 'no-go') : null] : tag('missing', 'not completed')),
-            h('dt', { text: 'Hazards' }), h('dd', null, rsc.hazards.length ? h('ul', { class: 'plain' }, rsc.hazards.map(function (x) {
-                var z = (r.risk.hz[x.it.id] || {});
-                return h('li', { text: '[' + x.it.cat + '] ' + x.it.short + (clean(z.d) ? ' (' + clean(z.d) + ')' : '') + ': ' + (z.l && z.s ? cellText(z.l, z.s) : 'not rated') +
-                    (x.e.mitig ? ' → ' + (z.l2 && z.s2 ? cellText(z.l2, z.s2) : 'not rated') + (clean(z.m) ? ' with: ' + clean(z.m) : '') : '') });
-            })) : (rsc.answered ? 'None identified' : '—')),
+            h('dt', { text: 'Result' }), h('dd', null, rsc.band ? [rsc.impaired ? 'No-go · under the influence' : rsc.band + ' · ' + BAND_MEANS[rsc.band],
+                rsc.band === 'Red' ? tag('missing', r.risk.override ? 'override' : 'no-go') : null] : tag('missing', 'not completed')),
+            h('dt', { text: 'Scores' }), h('dd', { text: scoresText(r) + ' (1 low risk, 10 high)' }),
+            rsc.band !== 'Green' && clean(r.risk.m) ? [h('dt', { text: 'Mitigation' }), h('dd', { text: clean(r.risk.m) })] : null,
             r.risk.override ? [h('dt', { text: 'Override' }), h('dd', { text: clean(r.risk.override.reason) })] : null)));
         if (selectedTests(r).length) add(view, panel('Test results', editBtn('outcome', 'edit-results'),
             h('ul', { class: 'ck-list', id: 'review-results' }, resultsText(r).split(' | ').map(function (line) { return h('li', { text: line }); }))));
